@@ -1,0 +1,421 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Threading.Tasks;
+using Autofac;
+using DotNetCoreDecorators;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using MyJetWallet.Circle.Models.Payments;
+using MyJetWallet.Sdk.Service;
+using MyJetWallet.Sdk.Service.Tools;
+using MyJetWallet.Sdk.ServiceBus;
+using Newtonsoft.Json;
+using Service.Bitgo.DepositDetector.Domain.Models;
+using Service.Bitgo.DepositDetector.Grpc;
+using Service.BuyCryptoProcessor.Domain.Models;
+using Service.BuyCryptoProcessor.Postgres;
+using Service.ChangeBalanceGateway.Grpc;
+using Service.ChangeBalanceGateway.Grpc.Models;
+using Service.Liquidity.Converter.Domain.Models;
+using Service.Liquidity.Converter.Grpc;
+using Service.Liquidity.Converter.Grpc.Models;
+
+namespace Service.BuyCryptoProcessor.Jobs
+{
+    public class PaymentProcessingJob : IStartable, IDisposable
+    {
+        private readonly MyTaskTimer _timer;
+        private readonly ILogger<PaymentProcessingJob> _logger;
+        private readonly IServiceBusPublisher<CryptoBuyIntention> _publisher;
+        private readonly ICircleDepositService _circleDepositService;
+        private readonly DbContextOptionsBuilder<DatabaseContext> _dbContextOptionsBuilder;
+        private readonly IQuoteService _quoteService;
+        private readonly ISpotChangeBalanceService _changeBalanceService;
+
+        public PaymentProcessingJob(ILogger<PaymentProcessingJob> logger, IServiceBusPublisher<CryptoBuyIntention> publisher, ISubscriber<Deposit> depositSubscriber, ICircleDepositService circleDepositService, DbContextOptionsBuilder<DatabaseContext> dbContextOptionsBuilder, IQuoteService quoteService, ISpotChangeBalanceService changeBalanceService)
+        {
+            _logger = logger;
+            _publisher = publisher;
+            _circleDepositService = circleDepositService;
+            _dbContextOptionsBuilder = dbContextOptionsBuilder;
+            _quoteService = quoteService;
+            _changeBalanceService = changeBalanceService;
+            depositSubscriber.Subscribe(HandleCircleDeposits);
+            _timer = new MyTaskTimer(typeof(PaymentProcessingJob),
+                TimeSpan.FromSeconds(Program.Settings.TimerPeriodInSec),
+                logger, DoTime);
+        }
+
+        private async Task DoTime()
+        {
+            await GetCheckoutUrl();
+            await ExecuteQuote();
+            await TransferFundsToClient();
+        }
+        
+        private async Task GetCheckoutUrl()
+        {
+            using var activity = MyTelemetry.StartActivity("Handle approved transfers");
+            try
+            {
+                await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
+
+                var sw = new Stopwatch();
+                sw.Start();
+
+                var count = 0;
+                var intentions = await context.Intentions.Where(e =>
+                    e.Status == BuyStatus.ExecutionStarted).ToListAsync();
+
+                var updatedIntentions = new List<CryptoBuyIntention>();
+                foreach (var intention in intentions)
+                    try
+                    {
+                        var response = await _circleDepositService.GetCirclePayment(new ()
+                        {
+                            BrokerId = intention.BrokerId,
+                            DepositId = intention.CircleDepositId
+                        });
+
+                        if (response.Success && response.Data.Status is PaymentStatus.ActionRequired or PaymentStatus.Confirmed)
+                        {
+                            intention.Status = BuyStatus.PaymentCreated;
+                            intention.DepositCheckoutLink = response.Data.RequiredAction?.RedirectUrl;
+                            await PublishSuccess(intention);
+                            updatedIntentions.Add(intention);
+                            count++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        await HandleError(intention, ex);
+                    }
+
+                if(updatedIntentions.Any())
+                    await context.UpsertAsync(updatedIntentions);
+
+                intentions.Count.AddToActivityAsTag("transfers-count");
+
+                sw.Stop();
+                if (count > 0)
+                    _logger.LogInformation("Handled {countTrade} approved transfers. Time: {timeRangeText}",
+                        count,
+                        sw.Elapsed.ToString());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cannot Handle approved transfers");
+                ex.FailActivity();
+                throw;
+            }
+
+        }
+
+        private async ValueTask HandleCircleDeposits(Deposit deposit)
+        {
+            
+            if (deposit.Status != DepositStatus.Processed)
+                return;
+            
+            if (deposit.ClientId != Program.Settings.ServiceClientId)
+                return;
+
+            var intentionId = deposit.CryptoBuyData?.CryptoBuyId;
+            if(string.IsNullOrEmpty(intentionId))
+                return;
+
+            await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
+            var intention = await context.Intentions.FirstOrDefaultAsync(t => t.Id == intentionId);
+            if (intention == null)
+                return;
+            
+            try
+            {
+                intention.Status = BuyStatus.PaymentReceived;
+                intention.ProvidedCryptoAsset = deposit.AssetSymbol;
+                intention.ProvidedCryptoAmount = deposit.Amount;
+                intention.DepositOperationId = deposit.Id.ToString();
+                intention.DepositTimestamp = deposit.EventDate;
+                intention.DepositIntegration = deposit.Integration;
+                intention.CardLast4 = deposit.CardLast4;
+                await PublishSuccess(intention);
+            }
+            catch (Exception ex)
+            {
+                await HandleError(intention, ex);
+            }
+        }
+
+        private async Task ExecuteQuote()
+        {
+            using var activity = MyTelemetry.StartActivity("Handle approved transfers");
+            try
+            {
+                await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
+
+                var sw = new Stopwatch();
+                sw.Start();
+
+                var count = 0;
+                var intentions = await context.Intentions.Where(e =>
+                    e.Status == BuyStatus.PaymentReceived).ToListAsync();
+
+                var updatedIntentions = new List<CryptoBuyIntention>();
+                foreach (var intention in intentions)
+                    try
+                    {
+                        var quoteResponse = await _quoteService.ExecuteQuoteAsync(new ExecuteQuoteRequest
+                        {
+                            FromAsset = intention.ProvidedCryptoAsset,
+                            ToAsset = intention.BuyAsset,
+                            FromAssetVolume = intention.ProvidedCryptoAmount,
+                            ToAssetVolume = intention.BuyAmount,
+                            IsFromFixed = true,
+                            BrokerId = intention.BrokerId,
+                            AccountId = Program.Settings.ServiceClientId,
+                            WalletId = Program.Settings.ServiceWalletId,
+                            OperationId = intention.PreviewQuoteId,
+                            Price = intention.QuotePrice
+                        });
+                       
+                        if(quoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
+                        {
+                            intention.SwapFeeAmount = quoteResponse.Data.FeeAmount;
+                            intention.SwapFeeAsset = quoteResponse.Data.FeeAsset;
+                            intention.ExecuteQuoteId = quoteResponse.Data.OperationId;
+                            intention.ExecuteTimestamp = DateTime.UtcNow;
+                            intention.Status = BuyStatus.ConversionExecuted;
+
+                            await PublishSuccess(intention);
+                            updatedIntentions.Add(intention); 
+                            count++;
+                            continue;
+                        }
+
+                        if (quoteResponse.QuoteExecutionResult == QuoteExecutionResult.ReQuote)
+                        {
+                            var reQuoteResponse = await _quoteService.ExecuteQuoteAsync(new ExecuteQuoteRequest
+                            {
+                                FromAsset = intention.ProvidedCryptoAsset,
+                                ToAsset = intention.BuyAsset,
+                                FromAssetVolume = intention.ProvidedCryptoAmount,
+                                ToAssetVolume = quoteResponse.Data.FromAssetVolume,
+                                IsFromFixed = true,
+                                BrokerId = intention.BrokerId,
+                                AccountId = Program.Settings.ServiceClientId,
+                                WalletId = Program.Settings.ServiceWalletId,
+                                OperationId = quoteResponse.Data.OperationId,
+                                Price = quoteResponse.Data.Price
+                            });
+
+                            if (reQuoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
+                            {
+                                intention.SwapFeeAmount = reQuoteResponse.Data.FeeAmount;
+                                intention.SwapFeeAsset = reQuoteResponse.Data.FeeAsset;
+                                intention.ExecuteQuoteId = reQuoteResponse.Data.OperationId;
+                                intention.ExecuteTimestamp = DateTime.UtcNow;
+                                intention.Status = BuyStatus.ConversionExecuted;
+
+                                await PublishSuccess(intention);
+                                updatedIntentions.Add(intention); 
+                                count++;
+                                continue;
+                            }
+                        }
+                        
+                        var quote = await _quoteService.GetQuoteAsync(new GetQuoteRequest
+                        {
+                            FromAsset = intention.ProvidedCryptoAsset,
+                            ToAsset = intention.BuyAsset,
+                            FromAssetVolume = intention.ProvidedCryptoAmount,
+                            IsFromFixed = true,
+                            BrokerId = intention.BrokerId,
+                            AccountId = Program.Settings.ServiceClientId,
+                            WalletId = Program.Settings.ServiceWalletId,
+                            QuoteType = QuoteType.CryptoBuy,
+                            ProfileId = intention.SwapProfileId,
+                            CryptoBuyId = intention.Id
+                        });
+                        
+                        quoteResponse = await _quoteService.ExecuteQuoteAsync(new ExecuteQuoteRequest
+                        {
+                            FromAsset = intention.ProvidedCryptoAsset,
+                            ToAsset = intention.BuyAsset,
+                            FromAssetVolume = intention.ProvidedCryptoAmount,
+                            ToAssetVolume = quote.Data.ToAssetVolume,
+                            IsFromFixed = true,
+                            BrokerId = intention.BrokerId,
+                            AccountId = Program.Settings.ServiceClientId,
+                            WalletId = Program.Settings.ServiceWalletId,
+                            OperationId = quote.Data.OperationId,
+                            Price = quote.Data.Price
+                        });
+                        
+                        if(quoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
+                        {
+                            intention.SwapFeeAmount = quoteResponse.Data.FeeAmount;
+                            intention.SwapFeeAsset = quoteResponse.Data.FeeAsset;
+                            intention.ExecuteQuoteId = quoteResponse.Data.OperationId;
+                            intention.ExecuteTimestamp = DateTime.UtcNow;
+                            intention.Status = BuyStatus.ConversionExecuted;
+                            await PublishSuccess(intention);
+                            updatedIntentions.Add(intention); 
+                            count++;
+                        }
+                        
+                    }
+                    catch (Exception ex)
+                    {
+                        await HandleError(intention, ex);
+                    }
+
+                if(updatedIntentions.Any())
+                    await context.UpsertAsync(updatedIntentions);
+
+                intentions.Count.AddToActivityAsTag("transfers-count");
+
+                sw.Stop();
+                if (count > 0)
+                    _logger.LogInformation("Handled {countTrade} approved transfers. Time: {timeRangeText}",
+                        count,
+                        sw.Elapsed.ToString());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cannot Handle approved transfers");
+                ex.FailActivity();
+                throw;
+            }
+        }
+
+        private async Task TransferFundsToClient()
+        {
+            using var activity = MyTelemetry.StartActivity("Handle approved transfers");
+            try
+            {
+                await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
+
+                var sw = new Stopwatch();
+                sw.Start();
+
+                var count = 0;
+                var intentions = await context.Intentions.Where(e =>
+                    e.Status == BuyStatus.ConversionExecuted).ToListAsync();
+
+                var updatedIntentions = new List<CryptoBuyIntention>();
+                foreach (var intention in intentions)
+                    try
+                    {
+                        var response = await _changeBalanceService.InternalTransferAsync(new InternalTransferGrpcRequest //TODO: separate gateway action
+                        {
+                            TransactionId = intention.Id,
+                            ClientId = Program.Settings.ServiceClientId,
+                            FromWalletId = Program.Settings.ServiceWalletId,
+                            ToWalletId = intention.WalletId,
+                            Amount = intention.BuyAmount,
+                            AssetSymbol = intention.BuyAsset,
+                            BrokerId = intention.BrokerId,
+                            Integration = $"{intention.DepositIntegration}|Service.BuyCryptoProcessor",
+                            Txid = intention.Id
+                        });
+
+                        if (response.Result)
+                        {
+                            intention.Status = BuyStatus.Finished;
+                            await PublishSuccess(intention);
+                            updatedIntentions.Add(intention);
+                            count++;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        await HandleError(intention, ex);
+                    }
+
+                if(updatedIntentions.Any())
+                    await context.UpsertAsync(updatedIntentions);
+
+                intentions.Count.AddToActivityAsTag("transfers-count");
+
+                sw.Stop();
+                if (count > 0)
+                    _logger.LogInformation("Handled {countTrade} approved transfers. Time: {timeRangeText}",
+                        count,
+                        sw.Elapsed.ToString());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Cannot Handle approved transfers");
+                ex.FailActivity();
+                throw;
+            }
+            
+        }
+
+
+        private async Task HandleError(CryptoBuyIntention intention, Exception ex, bool retrying = true)
+        {
+            ex.FailActivity();
+            
+            intention.WorkflowState =  WorkflowState.Retrying;
+            
+            intention.LastError = ex.Message.Length > 2048 ? ex.Message.Substring(0, 2048) : ex.Message;
+            intention.RetriesCount++;
+            if (intention.RetriesCount >= Program.Settings.RetriesLimit || !retrying)
+            {
+                intention.WorkflowState = WorkflowState.Failed;
+            }
+
+            _logger.LogError(ex,
+                "CryptoBuy ID {operationId} changed workflow state to {status}. Operation: {operationJson}",
+                intention.Id, intention.WorkflowState, JsonConvert.SerializeObject(intention));
+            try
+            {
+                await _publisher.PublishAsync(intention);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Can not publish error operation status {operationJson}",
+                    JsonConvert.SerializeObject(intention));
+            }
+        }
+
+        private async Task PublishSuccess(CryptoBuyIntention intention)
+        {
+            var retriesCount = intention.RetriesCount;
+            var lastError = intention.LastError;
+            var state = intention.WorkflowState;
+            try
+            {
+                intention.RetriesCount = 0;
+                intention.LastError = null;
+                intention.WorkflowState = WorkflowState.Normal;
+
+                await _publisher.PublishAsync(intention);
+                _logger.LogInformation(
+                    "CryptoBuy with Operation ID {operationId} is changed to status {status}. Operation: {operationJson}",
+                    intention.Id, intention.Status, JsonConvert.SerializeObject(intention));
+            }
+            catch
+            {
+                intention.RetriesCount = retriesCount;
+                intention.LastError = lastError;
+                intention.WorkflowState = state;
+                throw;
+            }
+        }
+        
+        public void Start()
+        {
+            _timer.Start();
+        }
+        
+
+        public void Dispose()
+        {
+            _timer?.Dispose();
+        }
+    }
+}
