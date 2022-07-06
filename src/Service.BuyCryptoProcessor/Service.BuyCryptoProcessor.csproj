@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Autofac.Extensions.DependencyInjection" Version="8.0.0" />
-    <PackageReference Include="Grpc.AspNetCore" Version="2.46.0" />
+    <PackageReference Include="Grpc.AspNetCore" Version="2.47.0" />
     <PackageReference Include="JetBrains.Annotations" Version="2022.1.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.6">
       <PrivateAssets>all</PrivateAssets>
@@ -24,9 +24,9 @@
     <PackageReference Include="MyJetWallet.Sdk.NoSql" Version="2.2.7" />
     <PackageReference Include="MyJetWallet.Sdk.Service" Version="2.2.4" />
     <PackageReference Include="MyJetWallet.Sdk.ServiceBus" Version="2.2.4" />
-    <PackageReference Include="MyJetWallet.Service.Bitgo.DepositDetector.Client" Version="2.3.1" />
-    <PackageReference Include="MyJetWallet.Service.ChangeBalanceGateway.Client" Version="2.3.2" />
-    <PackageReference Include="MyJetWallet.Service.Fees.Client" Version="3.2.2" />
+    <PackageReference Include="MyJetWallet.Service.Bitgo.DepositDetector.Client" Version="2.3.5" />
+    <PackageReference Include="MyJetWallet.Service.ChangeBalanceGateway.Client" Version="2.3.3" />
+    <PackageReference Include="MyJetWallet.Service.Fees.Client" Version="3.3.1" />
     <PackageReference Include="MyJetWallet.Service.Liquidity.Converter.Client" Version="1.8.6" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="prometheus-net.AspNetCore" Version="6.0.0" />
