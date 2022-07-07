@@ -113,7 +113,7 @@ namespace Service.BuyCryptoProcessor.Services
             intention.Rate = intention.BuyAmount / intention.PaymentAmount;
             intention.FeeAsset = intention.BuyAsset;
             intention.FeeAmount = intention.BuyFeeAmount + intention.SwapFeeAmount * intention.Rate;
-
+            
             await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
             await context.UpsertAsync(new[] {intention});
 
@@ -143,26 +143,33 @@ namespace Service.BuyCryptoProcessor.Services
                     IsSuccess = false
                 };
             }
+
+            if(string.IsNullOrEmpty(intention.CircleRequestId))
+                intention.CircleRequestId = Guid.NewGuid().ToString("D");
+
             var response = await _circleService.AddCirclePayment(new AddCardDepositRequest
             {
                 BrokerId = intention.BrokerId,
-                ClientId = Program.Settings.ServiceClientId,
-                WalletId = Program.Settings.ServiceWalletId,
-                RequestId = intention.Id,
+                ClientId = intention.ClientId,
+                WalletId = intention.WalletId,
+                RequestId = intention.CircleRequestId,
                 KeyId = request.KeyId,
                 SessionId = request.SessionId,
                 IpAddress = request.IpAddress,
-                Amount = intention.BuyAmount,
+                Amount = intention.PaymentAmount,
                 Currency = intention.ProvidedCryptoAsset,
                 CardId = request.CardId,
                 EncryptedData = request.EncryptedData,
                 CryptoBuyId = intention.Id,
-                BuyerClientId = intention.ClientId,
-                BuyerWalletId = intention.WalletId
+                CryptoBuyClientId = Program.Settings.ServiceClientId,
+                CryptoBuyWalletId = Program.Settings.ServiceWalletId
             });
 
             intention.CircleDepositId = response.DepositId;
             intention.CardId = request.CardId;
+
+            if (response.Status == AddCardDepositResponse.StatusCode.Ok)
+                intention.Status = BuyStatus.ExecutionStarted;
             
             await context.UpsertAsync(new[] {intention});
             

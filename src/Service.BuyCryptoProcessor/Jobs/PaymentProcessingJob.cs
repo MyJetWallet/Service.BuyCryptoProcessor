@@ -57,7 +57,7 @@ namespace Service.BuyCryptoProcessor.Jobs
         
         private async Task GetCheckoutUrl()
         {
-            using var activity = MyTelemetry.StartActivity("Handle approved transfers");
+            using var activity = MyTelemetry.StartActivity("Handle update approved payments");
             try
             {
                 await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
@@ -96,17 +96,17 @@ namespace Service.BuyCryptoProcessor.Jobs
                 if(updatedIntentions.Any())
                     await context.UpsertAsync(updatedIntentions);
 
-                intentions.Count.AddToActivityAsTag("transfers-count");
+                intentions.Count.AddToActivityAsTag("payment-count");
 
                 sw.Stop();
                 if (count > 0)
-                    _logger.LogInformation("Handled {countTrade} approved transfers. Time: {timeRangeText}",
+                    _logger.LogInformation("Handled {countTrade} approved payments. Time: {timeRangeText}",
                         count,
                         sw.Elapsed.ToString());
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Cannot Handle approved transfers");
+                _logger.LogError(ex, "Cannot Handle approved payments");
                 ex.FailActivity();
                 throw;
             }
@@ -115,13 +115,12 @@ namespace Service.BuyCryptoProcessor.Jobs
 
         private async ValueTask HandleCircleDeposits(Deposit deposit)
         {
+            if (deposit.BeneficiaryClientId != Program.Settings.ServiceClientId)
+                return;
             
             if (deposit.Status != DepositStatus.Processed)
                 return;
             
-            if (deposit.ClientId != Program.Settings.ServiceClientId)
-                return;
-
             var intentionId = deposit.CryptoBuyData?.CryptoBuyId;
             if(string.IsNullOrEmpty(intentionId))
                 return;
@@ -146,11 +145,13 @@ namespace Service.BuyCryptoProcessor.Jobs
             {
                 await HandleError(intention, ex);
             }
+
+            await context.UpsertAsync(new[] {intention});
         }
 
         private async Task ExecuteQuote()
         {
-            using var activity = MyTelemetry.StartActivity("Handle approved transfers");
+            using var activity = MyTelemetry.StartActivity("Handle payment to execute quote");
             try
             {
                 await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
@@ -274,17 +275,17 @@ namespace Service.BuyCryptoProcessor.Jobs
                 if(updatedIntentions.Any())
                     await context.UpsertAsync(updatedIntentions);
 
-                intentions.Count.AddToActivityAsTag("transfers-count");
+                intentions.Count.AddToActivityAsTag("payment-count");
 
                 sw.Stop();
                 if (count > 0)
-                    _logger.LogInformation("Handled {countTrade} approved transfers. Time: {timeRangeText}",
+                    _logger.LogInformation("Handled {countTrade} payments to execute quote. Time: {timeRangeText}",
                         count,
                         sw.Elapsed.ToString());
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Cannot Handle approved transfers");
+                _logger.LogError(ex, "Cannot Handle payment to execute quote");
                 ex.FailActivity();
                 throw;
             }
@@ -292,7 +293,7 @@ namespace Service.BuyCryptoProcessor.Jobs
 
         private async Task TransferFundsToClient()
         {
-            using var activity = MyTelemetry.StartActivity("Handle approved transfers");
+            using var activity = MyTelemetry.StartActivity("Handle payment transfers to client");
             try
             {
                 await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
@@ -341,13 +342,13 @@ namespace Service.BuyCryptoProcessor.Jobs
 
                 sw.Stop();
                 if (count > 0)
-                    _logger.LogInformation("Handled {countTrade} approved transfers. Time: {timeRangeText}",
+                    _logger.LogInformation("Handled {countTrade} payment transfers to client. Time: {timeRangeText}",
                         count,
                         sw.Elapsed.ToString());
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Cannot Handle approved transfers");
+                _logger.LogError(ex, "Cannot Handle payment transfers to client");
                 ex.FailActivity();
                 throw;
             }

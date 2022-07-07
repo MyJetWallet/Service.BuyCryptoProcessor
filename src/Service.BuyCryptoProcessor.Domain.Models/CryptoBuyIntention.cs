@@ -56,6 +56,8 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 38)]public string ExecuteQuoteId { get; set; }
         [DataMember(Order = 39)]public DateTime ExecuteTimestamp { get; set; }
         [DataMember(Order = 40)]public decimal Rate { get; set; }
+        
+        [DataMember(Order = 41)]public string CircleRequestId { get; set; }
 
     }
 
