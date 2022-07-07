@@ -15,9 +15,9 @@ using Newtonsoft.Json;
 using Service.Bitgo.DepositDetector.Domain.Models;
 using Service.Bitgo.DepositDetector.Grpc;
 using Service.BuyCryptoProcessor.Domain.Models;
+using Service.BuyCryptoProcessor.Domain.Models.Enums;
 using Service.BuyCryptoProcessor.Postgres;
 using Service.ChangeBalanceGateway.Grpc;
-using Service.ChangeBalanceGateway.Grpc.Models;
 using Service.Liquidity.Converter.Domain.Models;
 using Service.Liquidity.Converter.Grpc;
 using Service.Liquidity.Converter.Grpc.Models;
@@ -309,17 +309,15 @@ namespace Service.BuyCryptoProcessor.Jobs
                 foreach (var intention in intentions)
                     try
                     {
-                        var response = await _changeBalanceService.InternalTransferAsync(new InternalTransferGrpcRequest //TODO: separate gateway action
+                        var response = await _changeBalanceService.TransferCryptoBuyFundsAsync(new () 
                         {
                             TransactionId = intention.Id,
-                            ClientId = Program.Settings.ServiceClientId,
-                            FromWalletId = Program.Settings.ServiceWalletId,
-                            ToWalletId = intention.WalletId,
+                            CryptoBuyClientId = Program.Settings.ServiceClientId,
+                            CryptoBuyWalletId = Program.Settings.ServiceWalletId,
+                            ClientWalletId = intention.WalletId,
                             Amount = intention.BuyAmount,
                             AssetSymbol = intention.BuyAsset,
-                            BrokerId = intention.BrokerId,
-                            Integration = $"{intention.DepositIntegration}|Service.BuyCryptoProcessor",
-                            Txid = intention.Id
+                            BrokerId = intention.BrokerId
                         });
 
                         if (response.Result)

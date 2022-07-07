@@ -6,11 +6,13 @@
 
   <ItemGroup>
     <PackageReference Include="MyJetWallet.Service.Bitgo.DepositDetector.Client" Version="2.3.7" />
+    <PackageReference Include="MyJetWallet.Service.Liquidity.Converter.Client" Version="1.8.6" />
     <PackageReference Include="System.ServiceModel.Primitives" Version="4.9.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Service.BuyCryptoProcessor.Domain.Models\Service.BuyCryptoProcessor.Domain.Models.csproj" />
   </ItemGroup>
+
 
 </Project>

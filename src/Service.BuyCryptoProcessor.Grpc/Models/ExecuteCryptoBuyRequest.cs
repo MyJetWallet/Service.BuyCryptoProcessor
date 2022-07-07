@@ -1,5 +1,5 @@
 using System.Runtime.Serialization;
-using Service.BuyCryptoProcessor.Domain.Models;
+using Service.BuyCryptoProcessor.Domain.Models.Enums;
 
 namespace Service.BuyCryptoProcessor.Grpc.Models
 {
@@ -8,10 +8,17 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
     {
         [DataMember(Order = 1)] public string ClientId { get; set; }
         [DataMember(Order = 2)] public string PaymentId { get; set; }
-        [DataMember(Order = 3)] public string KeyId { get; set; }
-        [DataMember(Order = 4)] public string SessionId { get; set; }
-        [DataMember(Order = 5)] public string IpAddress { get; set; }
-        [DataMember(Order = 6)] public string CardId { get; set; }
-        [DataMember(Order = 7)] public string EncryptedData { get; set; }
+        [DataMember(Order = 3)] public PaymentMethods PaymentMethod { get; set; }
+        [DataMember(Order = 4)] public CirclePaymentDetails CirclePaymentDetails { get; set; }
+    }
+
+    [DataContract]
+    public class CirclePaymentDetails
+    {
+        [DataMember(Order = 1)] public string KeyId { get; set; }
+        [DataMember(Order = 2)] public string SessionId { get; set; }
+        [DataMember(Order = 3)] public string IpAddress { get; set; }
+        [DataMember(Order = 4)] public string CardId { get; set; }
+        [DataMember(Order = 5)] public string EncryptedData { get; set; }
     }
 }

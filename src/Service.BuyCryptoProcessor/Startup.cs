@@ -5,17 +5,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Autofac;
-using MyJetWallet.Sdk.GrpcMetrics;
 using MyJetWallet.Sdk.GrpcSchema;
 using MyJetWallet.Sdk.Postgres;
 using MyJetWallet.Sdk.Service;
 using Prometheus;
-using ProtoBuf.Grpc.Server;
 using Service.BuyCryptoProcessor.Grpc;
 using Service.BuyCryptoProcessor.Modules;
 using Service.BuyCryptoProcessor.Postgres;
 using Service.BuyCryptoProcessor.Services;
-using SimpleTrading.BaseMetrics;
 using SimpleTrading.ServiceStatusReporterConnector;
 
 namespace Service.BuyCryptoProcessor
@@ -54,6 +51,7 @@ namespace Service.BuyCryptoProcessor
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapGrpcSchema<CryptoBuyService, ICryptoBuyService>();
+                endpoints.MapGrpcSchema<CryptoBuyManager, ICryptoBuyManager>();
 
                 endpoints.MapGrpcSchemaRegistry();
 

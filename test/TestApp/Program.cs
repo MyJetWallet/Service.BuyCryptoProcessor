@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Threading.Tasks;
 using ProtoBuf.Grpc.Client;
-using Service.BuyCryptoProcessor.Client;
-using Service.BuyCryptoProcessor.Grpc.Models;
 
 namespace TestApp
 {

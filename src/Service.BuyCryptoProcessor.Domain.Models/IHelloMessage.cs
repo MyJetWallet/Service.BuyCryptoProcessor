@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace Service.BuyCryptoProcessor.Domain.Models
+﻿namespace Service.BuyCryptoProcessor.Domain.Models
 {
     public interface IHelloMessage
     {

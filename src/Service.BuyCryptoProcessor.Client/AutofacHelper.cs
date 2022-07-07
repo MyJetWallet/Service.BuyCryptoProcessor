@@ -11,7 +11,9 @@ namespace Service.BuyCryptoProcessor.Client
         {
             var factory = new BuyCryptoProcessorClientFactory(grpcServiceUrl);
 
-            builder.RegisterInstance(factory.GetHelloService()).As<ICryptoBuyService>().SingleInstance();
+            builder.RegisterInstance(factory.GetBuyService()).As<ICryptoBuyService>().SingleInstance();
+            builder.RegisterInstance(factory.GetBuyManager()).As<ICryptoBuyManager>().SingleInstance();
+
         }
     }
 }

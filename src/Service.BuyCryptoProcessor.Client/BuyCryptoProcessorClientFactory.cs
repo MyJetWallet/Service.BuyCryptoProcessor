@@ -11,6 +11,8 @@ namespace Service.BuyCryptoProcessor.Client
         {
         }
 
-        public ICryptoBuyService GetHelloService() => CreateGrpcService<ICryptoBuyService>();
+        public ICryptoBuyService GetBuyService() => CreateGrpcService<ICryptoBuyService>();
+        public ICryptoBuyManager GetBuyManager() => CreateGrpcService<ICryptoBuyManager>();
+
     }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.Serialization;
+using Service.BuyCryptoProcessor.Domain.Models.Enums;
 
 namespace Service.BuyCryptoProcessor.Domain.Models
 {
@@ -56,30 +57,9 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 38)]public string ExecuteQuoteId { get; set; }
         [DataMember(Order = 39)]public DateTime ExecuteTimestamp { get; set; }
         [DataMember(Order = 40)]public decimal Rate { get; set; }
-        
         [DataMember(Order = 41)]public string CircleRequestId { get; set; }
 
     }
-
-    public enum PaymentMethods
-    {
-        CircleCard = 0,
-    }
     
-    public enum BuyStatus
-    {
-        New = 0,
-        ExecutionStarted = 1,
-        PaymentCreated = 2,
-        PaymentReceived = 3,
-        ConversionExecuted = 4,
-        Finished = 5
-    }
     
-    public enum WorkflowState
-    {
-        Normal = 0,
-        Retrying = 1,
-        Failed = 2
-    }
 }

@@ -1,5 +1,5 @@
 using System.Runtime.Serialization;
-using Service.BuyCryptoProcessor.Domain.Models;
+using Service.BuyCryptoProcessor.Domain.Models.Enums;
 
 namespace Service.BuyCryptoProcessor.Grpc.Models
 {
