@@ -26,16 +26,21 @@ namespace Service.BuyCryptoProcessor.Services
             try
             {
                 await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
-                var query = context.Intentions.AsNoTracking();
+                var query = context.Intentions.AsQueryable();
 
-                if (request.LastTs != DateTime.MinValue)
+                if (request.Take == 0)
                 {
-                    query = query.Where(e => e.CreationTime < request.LastTs);
+                    request.Take = 20;
                 }
 
-                if (!string.IsNullOrWhiteSpace(request.WalletId))
+                if (request.LastSeen != DateTime.MinValue)
                 {
-                    query = query.Where(e => e.WalletId == request.WalletId);
+                    query = query.Where(t => t.CreationTime < request.LastSeen);
+                }
+
+                if (!string.IsNullOrWhiteSpace(request.ClientId))
+                {
+                    query = query.Where(t => t.ClientId == request.ClientId);
                 }
 
                 if (!string.IsNullOrWhiteSpace(request.BuyAsset))
@@ -45,17 +50,38 @@ namespace Service.BuyCryptoProcessor.Services
 
                 if (!string.IsNullOrWhiteSpace(request.PaymentAsset))
                 {
-                    query = query.Where(e => e.BuyAsset == request.PaymentAsset);
+                    query = query.Where(e => e.PaymentAsset == request.PaymentAsset);
                 }
 
                 if (request.BuyStatus != null)
                 {
                     query = query.Where(e => e.Status == request.BuyStatus);
                 }
+                
+                if (request.CreationDateFrom != null)
+                {
+                    query = query.Where(t => t.CreationTime >= request.CreationDateFrom);
+                }
+                
+                if (request.CreationDateTo != null)
+                {
+                    query = query.Where(t => t.CreationTime <= request.CreationDateTo);
+                }
 
+                if (!string.IsNullOrWhiteSpace(request.SearchText))
+                {
+                    query = query.Where(t => t.ClientId.Contains(request.SearchText) ||
+                                             t.Id.Contains(request.SearchText) ||
+                                             t.PreviewQuoteId.Contains(request.SearchText) ||
+                                             t.ExecuteQuoteId.Contains(request.SearchText) ||
+                                             t.DepositOperationId.Contains(request.SearchText) ||
+                                             t.ClientId.Contains(request.SearchText) ||
+                                             t.CircleRequestId.Contains(request.SearchText));
+                }
+                
                 var intentions = await query
                     .OrderByDescending(e => e.CreationTime)
-                    .Take(request.BatchSize)
+                    .Take(request.Take)
                     .ToListAsync();
 
                 var response = new IntentionsResponse
@@ -73,7 +99,7 @@ namespace Service.BuyCryptoProcessor.Services
             {
                 _logger.LogError(exception,
                     "Cannot get GetIntentions take: {takeValue}, LastId: {LastId}",
-                    request.BatchSize, request.LastTs);
+                    request.Take, request.LastSeen);
                 return new IntentionsResponse {Success = false, ErrorMessage = exception.Message};
             }
         }
