@@ -69,8 +69,8 @@ namespace Service.BuyCryptoProcessor.Services
                 intention.BuyFeeAmount = buyFees.FeeSizeType switch
                 {
                     FeeSizeType.Absolute => buyFees.FeeSizeAbsolute,
-                    FeeSizeType.Percentage => intention.BuyFeeAmount * buyFees.FeeSizeRelative / 100m,
-                    FeeSizeType.Composite => (intention.BuyFeeAmount * buyFees.FeeSizeRelative / 100m) +
+                    FeeSizeType.Percentage => intention.PaymentAmount * buyFees.FeeSizeRelative,
+                    FeeSizeType.Composite => (intention.PaymentAmount * buyFees.FeeSizeRelative) +
                                              buyFees.FeeSizeAbsolute
                 };
 
@@ -110,7 +110,7 @@ namespace Service.BuyCryptoProcessor.Services
                 intention.QuotePrice = quote.Data.Price;
 
                 intention.Rate = intention.PaymentAmount / intention.BuyAmount;
-                intention.FeeAsset = intention.BuyAsset;
+                intention.FeeAsset = intention.BuyFeeAsset;
                 intention.FeeAmount = intention.BuyFeeAmount + intention.SwapFeeAmount * intention.Rate;
 
                 await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
