@@ -69,8 +69,8 @@ namespace Service.BuyCryptoProcessor.Services
                 intention.BuyFeeAmount = buyFees.FeeSizeType switch
                 {
                     FeeSizeType.Absolute => buyFees.FeeSizeAbsolute,
-                    FeeSizeType.Percentage => intention.PaymentAmount * buyFees.FeeSizeRelative,
-                    FeeSizeType.Composite => (intention.PaymentAmount * buyFees.FeeSizeRelative) +
+                    FeeSizeType.Percentage => intention.PaymentAmount * buyFees.FeeSizeRelative  / 100m,
+                    FeeSizeType.Composite => (intention.PaymentAmount * buyFees.FeeSizeRelative  / 100m) +
                                              buyFees.FeeSizeAbsolute
                 };
 
