@@ -87,8 +87,7 @@ namespace Service.BuyCryptoProcessor.Services
                 var response = new IntentionsResponse
                 {
                     Success = true,
-                    Intentions = intentions,
-                    TsForNextQuery = intentions.Min(t => t.CreationTime)
+                    Intentions = intentions
                 };
 
                 _logger.LogInformation("Return GetIntentions response count items: {count}",
