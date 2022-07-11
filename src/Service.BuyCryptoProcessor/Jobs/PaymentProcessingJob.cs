@@ -87,6 +87,15 @@ namespace Service.BuyCryptoProcessor.Jobs
                             updatedIntentions.Add(intention);
                             count++;
                         }
+
+                        if (response.Data.Status is PaymentStatus.Failed)
+                        {
+                            intention.Status = BuyStatus.Failed;
+                            intention.PaymentErrorCode = response.Data.ErrorCode;
+                            await PublishSuccess(intention);
+                            updatedIntentions.Add(intention);
+                            count++;
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -167,6 +176,14 @@ namespace Service.BuyCryptoProcessor.Jobs
                 foreach (var intention in intentions)
                     try
                     {
+                        if (intention.ProvidedCryptoAsset == intention.BuyAsset)
+                        {
+                            intention.Status = BuyStatus.ConversionExecuted;
+                            await PublishSuccess(intention);
+                            updatedIntentions.Add(intention); 
+                            count++;
+                            continue;
+                        }
                         var quoteResponse = await _quoteService.ExecuteQuoteAsync(new ExecuteQuoteRequest
                         {
                             FromAsset = intention.ProvidedCryptoAsset,

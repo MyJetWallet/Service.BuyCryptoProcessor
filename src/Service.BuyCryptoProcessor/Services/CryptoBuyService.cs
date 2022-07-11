@@ -54,7 +54,6 @@ namespace Service.BuyCryptoProcessor.Services
                     ServiceWalletId = Program.Settings.ServiceWalletId,
                     DepositProfileId = request.DepositFeeProfileId,
                     PaymentMethod = request.PaymentMethod,
-                    PaymentDetails = request.PaymentDetails,
                     PaymentAmount = request.PaymentAmount,
                     PaymentAsset = request.PaymentAsset,
                     SwapProfileId = request.SwapFeeProfileId,
@@ -65,7 +64,7 @@ namespace Service.BuyCryptoProcessor.Services
                 var buyFees =
                     _depositFees.GetDepositFees(request.BrokerId, request.DepositFeeProfileId, providedCryptoAsset);
 
-                intention.BuyFeeAsset = buyFees.AssetId;
+                intention.BuyFeeAsset = intention.PaymentAsset;
                 intention.BuyFeeAmount = buyFees.FeeSizeType switch
                 {
                     FeeSizeType.Absolute => buyFees.FeeSizeAbsolute,
@@ -78,36 +77,45 @@ namespace Service.BuyCryptoProcessor.Services
                 intention.ProvidedCryptoAmount = providedCryptoAmount;
                 intention.ProvidedCryptoAsset = providedCryptoAsset;
 
-                var quote = await _quoteService.GetQuoteAsync(new GetQuoteRequest
+                if (intention.ProvidedCryptoAsset != intention.BuyAsset)
                 {
-                    FromAsset = intention.ProvidedCryptoAsset,
-                    ToAsset = request.BuyAsset,
-                    FromAssetVolume = intention.ProvidedCryptoAmount,
-                    IsFromFixed = true,
-                    BrokerId = request.BrokerId,
-                    AccountId = Program.Settings.ServiceClientId,
-                    WalletId = Program.Settings.ServiceWalletId,
-                    QuoteType = QuoteType.CryptoBuy,
-                    ProfileId = request.SwapFeeProfileId,
-                    CryptoBuyId = intentionId
-                });
-
-                if (!quote.IsSuccess)
-                {
-                    return new CreateCryptoBuyResponse
+                    var quote = await _quoteService.GetQuoteAsync(new GetQuoteRequest
                     {
-                        IsSuccess = false,
-                        ConverterResponse = quote.ErrorCode,
-                        ErrorCode = CryptoBuyErrorCode.ConverterError
-                    };
-                }
+                        FromAsset = intention.ProvidedCryptoAsset,
+                        ToAsset = request.BuyAsset,
+                        FromAssetVolume = intention.ProvidedCryptoAmount,
+                        IsFromFixed = true,
+                        BrokerId = request.BrokerId,
+                        AccountId = Program.Settings.ServiceClientId,
+                        WalletId = Program.Settings.ServiceWalletId,
+                        QuoteType = QuoteType.CryptoBuy,
+                        ProfileId = request.SwapFeeProfileId,
+                        CryptoBuyId = intentionId
+                    });
 
-                intention.PreviewQuoteId = quote.Data.OperationId;
-                intention.BuyAmount = quote.Data.ToAssetVolume;
-                intention.SwapFeeAmount = quote.Data.FeeAmount;
-                intention.SwapFeeAsset = quote.Data.FeeAsset;
-                intention.PreviewConvertTimestamp = DateTime.UtcNow;
-                intention.QuotePrice = quote.Data.Price;
+                    if (!quote.IsSuccess)
+                    {
+                        return new CreateCryptoBuyResponse
+                        {
+                            IsSuccess = false,
+                            ConverterResponse = quote.ErrorCode,
+                            ErrorCode = CryptoBuyErrorCode.ConverterError
+                        };
+                    }
+
+                    intention.PreviewQuoteId = quote.Data.OperationId;
+                    intention.BuyAmount = quote.Data.ToAssetVolume;
+                    intention.SwapFeeAmount = quote.Data.FeeAmount;
+                    intention.SwapFeeAsset = quote.Data.FeeAsset;
+                    intention.PreviewConvertTimestamp = DateTime.UtcNow;
+                    intention.QuotePrice = quote.Data.Price;
+                }
+                else
+                {
+                    intention.BuyAmount = providedCryptoAmount;
+                    intention.SwapFeeAmount = 0m;
+                    intention.SwapFeeAsset = providedCryptoAsset;
+                }
 
                 intention.Rate = intention.PaymentAmount / intention.BuyAmount;
                 intention.FeeAsset = intention.BuyFeeAsset;
@@ -122,7 +130,6 @@ namespace Service.BuyCryptoProcessor.Services
                     Data = new CryptoBuyData()
                     {
                         PaymentMethod = intention.PaymentMethod,
-                        PaymentDetails = intention.PaymentDetails,
                         PaymentAmount = intention.PaymentAmount,
                         PaymentAsset = intention.PaymentAsset,
                         BuyAmount = intention.BuyAmount,
@@ -232,6 +239,9 @@ namespace Service.BuyCryptoProcessor.Services
                     Rate = intention.Rate
                 };
 
+            if (intention.Status is BuyStatus.Failed)
+                response.PaymentErrorCode = intention.PaymentErrorCode;
+                    
             return response;
         }
 

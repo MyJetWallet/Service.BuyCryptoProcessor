@@ -12,7 +12,7 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
         [DataMember(Order = 4)] public string WalletId { get; set; }
         
         [DataMember(Order = 5)] public PaymentMethods PaymentMethod { get; set; }
-        [DataMember(Order = 6)] public string PaymentDetails { get; set; }
+        //[DataMember(Order = 6)] public string PaymentDetails { get; set; }
         [DataMember(Order = 7)] public decimal PaymentAmount { get; set; }
         [DataMember(Order = 8)] public string PaymentAsset { get; set; }
         

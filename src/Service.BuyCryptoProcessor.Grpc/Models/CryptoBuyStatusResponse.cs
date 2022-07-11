@@ -1,4 +1,5 @@
 using System.Runtime.Serialization;
+using MyJetWallet.Circle.Models.Payments;
 using Service.BuyCryptoProcessor.Domain.Models.Enums;
 
 namespace Service.BuyCryptoProcessor.Grpc.Models
@@ -11,6 +12,7 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
         [DataMember(Order = 3)] public BuyStatus Status { get; set; }
         [DataMember(Order = 4)]public Payment PaymentInfo { get; set; }
         [DataMember(Order = 5)]public Buy BuyInfo { get; set; }
+        [DataMember(Order = 6)] public PaymentErrorCode? PaymentErrorCode { get; set; }
     }
 
     [DataContract]

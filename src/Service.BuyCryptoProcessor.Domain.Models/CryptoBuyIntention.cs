@@ -1,5 +1,6 @@
 using System;
 using System.Runtime.Serialization;
+using MyJetWallet.Circle.Models.Payments;
 using Service.BuyCryptoProcessor.Domain.Models.Enums;
 
 namespace Service.BuyCryptoProcessor.Domain.Models
@@ -23,7 +24,7 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         //buy
         [DataMember(Order = 12)]public string DepositProfileId { get; set; }
         [DataMember(Order = 13)]public PaymentMethods PaymentMethod { get; set; }
-        [DataMember(Order = 14)]public string PaymentDetails { get; set; }
+        //[DataMember(Order = 14)]public string PaymentDetails { get; set; }
         [DataMember(Order = 15)]public decimal PaymentAmount { get; set; }
         [DataMember(Order = 16)]public string PaymentAsset { get; set; }
         [DataMember(Order = 17)]public decimal ProvidedCryptoAmount { get; set; }
@@ -58,6 +59,7 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 39)]public DateTime ExecuteTimestamp { get; set; }
         [DataMember(Order = 40)]public decimal Rate { get; set; }
         [DataMember(Order = 41)]public string CircleRequestId { get; set; }
+        [DataMember(Order = 42)]public PaymentErrorCode? PaymentErrorCode { get; set; }
 
     }
     

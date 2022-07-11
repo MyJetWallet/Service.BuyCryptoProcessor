@@ -17,7 +17,7 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
     public class CryptoBuyData
     {
         [DataMember(Order = 1)] public PaymentMethods PaymentMethod { get; set; }
-        [DataMember(Order = 2)] public string PaymentDetails { get; set; }
+        //[DataMember(Order = 2)] public string PaymentDetails { get; set; }
         [DataMember(Order = 3)] public decimal PaymentAmount { get; set; }
         [DataMember(Order = 4)] public string PaymentAsset { get; set; }
         [DataMember(Order = 5)]public decimal BuyAmount { get; set; }
