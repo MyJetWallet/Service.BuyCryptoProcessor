@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -165,6 +166,17 @@ namespace Service.BuyCryptoProcessor.Services
                 };
             }
 
+            if (intention.Status != BuyStatus.New)
+            {
+                return new ExecuteCryptoBuyResponse()
+                {
+                    IsSuccess = intention.PaymentCreationErrorCode == AddCardDepositResponse.StatusCode.Ok,
+                    PaymentCreationErrorCode = intention.PaymentCreationErrorCode,
+                    PaymentExecutionErrorCode = intention.PaymentExecutionErrorCode,
+                    ErrorCode = CryptoBuyErrorCode.CircleError
+                };
+            }
+
             if(string.IsNullOrEmpty(intention.CircleRequestId))
                 intention.CircleRequestId = Guid.NewGuid().ToString("D");
 
@@ -191,13 +203,18 @@ namespace Service.BuyCryptoProcessor.Services
 
             if (response.Status == AddCardDepositResponse.StatusCode.Ok)
                 intention.Status = BuyStatus.ExecutionStarted;
-            
+            else
+            {
+                intention.LastError = response.Status.ToString();
+                intention.Status = BuyStatus.Failed;
+            }
+
             await context.UpsertAsync(new[] {intention});
             
             return new ExecuteCryptoBuyResponse()
             {
                 IsSuccess = response.Status == AddCardDepositResponse.StatusCode.Ok,
-                ErrorCardCode = response.Status,
+                PaymentCreationErrorCode = response.Status,
                 ErrorCode = CryptoBuyErrorCode.CircleError
             };
         }
@@ -228,8 +245,13 @@ namespace Service.BuyCryptoProcessor.Services
                 }
             };
 
-            if (intention.Status is BuyStatus.PaymentCreated)
-                response.CheckoutUrl = intention.DepositCheckoutLink;
+            if (intention.Status is BuyStatus.PaymentCreated && intention.PaymentMethod == PaymentMethods.CircleCard)
+                response.ClientAction = new ClientAction()
+                {
+                    CheckoutUrl = intention.DepositCheckoutLink,
+                    RedirectUrls = new List<string>()
+                        {Program.Settings.CircleSuccessUrl, Program.Settings.CircleFailureUrl}
+                };
 
             if (intention.Status is BuyStatus.ConversionExecuted or BuyStatus.Finished)
                 response.BuyInfo = new Buy
@@ -240,8 +262,11 @@ namespace Service.BuyCryptoProcessor.Services
                 };
 
             if (intention.Status is BuyStatus.Failed)
-                response.PaymentErrorCode = intention.PaymentErrorCode;
-                    
+            {
+                response.PaymentExecutionErrorCode = intention.PaymentExecutionErrorCode;
+                response.PaymentCreationErrorCode = intention.PaymentCreationErrorCode;
+            }
+
             return response;
         }
 

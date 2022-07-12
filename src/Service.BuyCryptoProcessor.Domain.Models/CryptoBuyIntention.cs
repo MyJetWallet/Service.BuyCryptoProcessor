@@ -1,6 +1,7 @@
 using System;
 using System.Runtime.Serialization;
 using MyJetWallet.Circle.Models.Payments;
+using Service.Bitgo.DepositDetector.Domain.Models;
 using Service.BuyCryptoProcessor.Domain.Models.Enums;
 
 namespace Service.BuyCryptoProcessor.Domain.Models
@@ -59,8 +60,9 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 39)]public DateTime ExecuteTimestamp { get; set; }
         [DataMember(Order = 40)]public decimal Rate { get; set; }
         [DataMember(Order = 41)]public string CircleRequestId { get; set; }
-        [DataMember(Order = 42)]public PaymentErrorCode? PaymentErrorCode { get; set; }
-
+        [DataMember(Order = 42)]public PaymentErrorCode? PaymentExecutionErrorCode { get; set; }
+        [DataMember(Order = 43)]public AddCardDepositResponse.StatusCode? PaymentCreationErrorCode { get; set; }
+        
     }
     
     

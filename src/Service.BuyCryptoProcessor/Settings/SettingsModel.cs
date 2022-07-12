@@ -43,8 +43,10 @@ namespace Service.BuyCryptoProcessor.Settings
         [YamlProperty("BuyCryptoProcessor.RetriesLimit")]
         public int RetriesLimit { get; set; }
         
-
-
+        [YamlProperty("BuyCryptoProcessor.CircleSuccessUrl")]
+        public string CircleSuccessUrl { get; set; }
+        [YamlProperty("BuyCryptoProcessor.CircleFailureUrl")]
+        public string CircleFailureUrl { get; set; }
 
 
         

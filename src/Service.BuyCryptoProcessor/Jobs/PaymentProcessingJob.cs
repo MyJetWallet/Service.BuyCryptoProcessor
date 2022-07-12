@@ -91,7 +91,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                         if (response.Data.Status is PaymentStatus.Failed)
                         {
                             intention.Status = BuyStatus.Failed;
-                            intention.PaymentErrorCode = response.Data.ErrorCode;
+                            intention.PaymentExecutionErrorCode = response.Data.ErrorCode;
                             await PublishSuccess(intention);
                             updatedIntentions.Add(intention);
                             count++;
@@ -200,12 +200,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                        
                         if(quoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
                         {
-                            intention.SwapFeeAmount = quoteResponse.Data.FeeAmount;
-                            intention.SwapFeeAsset = quoteResponse.Data.FeeAsset;
-                            intention.ExecuteQuoteId = quoteResponse.Data.OperationId;
-                            intention.ExecuteTimestamp = DateTime.UtcNow;
-                            intention.Status = BuyStatus.ConversionExecuted;
-
+                            UpdateIntentionAfterSwap(intention, quoteResponse);
                             await PublishSuccess(intention);
                             updatedIntentions.Add(intention); 
                             count++;
@@ -230,12 +225,7 @@ namespace Service.BuyCryptoProcessor.Jobs
 
                             if (reQuoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
                             {
-                                intention.SwapFeeAmount = reQuoteResponse.Data.FeeAmount;
-                                intention.SwapFeeAsset = reQuoteResponse.Data.FeeAsset;
-                                intention.ExecuteQuoteId = reQuoteResponse.Data.OperationId;
-                                intention.ExecuteTimestamp = DateTime.UtcNow;
-                                intention.Status = BuyStatus.ConversionExecuted;
-
+                                UpdateIntentionAfterSwap(intention, quoteResponse);
                                 await PublishSuccess(intention);
                                 updatedIntentions.Add(intention); 
                                 count++;
@@ -273,16 +263,15 @@ namespace Service.BuyCryptoProcessor.Jobs
                         
                         if(quoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
                         {
-                            intention.SwapFeeAmount = quoteResponse.Data.FeeAmount;
-                            intention.SwapFeeAsset = quoteResponse.Data.FeeAsset;
-                            intention.ExecuteQuoteId = quoteResponse.Data.OperationId;
-                            intention.ExecuteTimestamp = DateTime.UtcNow;
-                            intention.Status = BuyStatus.ConversionExecuted;
+                            UpdateIntentionAfterSwap(intention, quoteResponse);
                             await PublishSuccess(intention);
                             updatedIntentions.Add(intention); 
                             count++;
                         }
-                        
+                        else
+                        {
+                            throw new Exception(quote.ErrorMessage);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -299,6 +288,18 @@ namespace Service.BuyCryptoProcessor.Jobs
                     _logger.LogInformation("Handled {countTrade} payments to execute quote. Time: {timeRangeText}",
                         count,
                         sw.Elapsed.ToString());
+                
+                //locals
+
+                void UpdateIntentionAfterSwap(CryptoBuyIntention intention, QuoteExecutionResponse quoteResponse)
+                {
+                    intention.BuyAmount = quoteResponse.Data.ToAssetVolume;
+                    intention.SwapFeeAmount = quoteResponse.Data.FeeAmount;
+                    intention.SwapFeeAsset = quoteResponse.Data.FeeAsset;
+                    intention.ExecuteQuoteId = quoteResponse.Data.OperationId;
+                    intention.ExecuteTimestamp = DateTime.UtcNow;
+                    intention.Status = BuyStatus.ConversionExecuted;
+                }
             }
             catch (Exception ex)
             {
