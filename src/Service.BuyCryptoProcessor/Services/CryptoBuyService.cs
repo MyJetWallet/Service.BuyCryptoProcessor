@@ -168,9 +168,11 @@ namespace Service.BuyCryptoProcessor.Services
 
             if (intention.Status != BuyStatus.New)
             {
+                var isSuccess = intention.PaymentCreationErrorCode is null or AddCardDepositResponse.StatusCode.Ok
+                                && intention.PaymentExecutionErrorCode is null;
                 return new ExecuteCryptoBuyResponse()
                 {
-                    IsSuccess = intention.PaymentCreationErrorCode == AddCardDepositResponse.StatusCode.Ok,
+                    IsSuccess = isSuccess,
                     PaymentCreationErrorCode = intention.PaymentCreationErrorCode,
                     PaymentExecutionErrorCode = intention.PaymentExecutionErrorCode,
                     ErrorCode = CryptoBuyErrorCode.CircleError
