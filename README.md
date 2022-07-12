@@ -8,3 +8,4 @@
 
 *Client library:* ![Nuget version](https://img.shields.io/nuget/v/MyJetWallet.Service.BuyCryptoProcessor.Client?label=MyJetWallet.Service.BuyCryptoProcessor.Client&style=social)
 
+
