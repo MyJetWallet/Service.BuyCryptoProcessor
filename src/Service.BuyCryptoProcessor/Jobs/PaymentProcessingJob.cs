@@ -258,7 +258,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                             AccountId = Program.Settings.ServiceClientId,
                             WalletId = Program.Settings.ServiceWalletId,
                             OperationId = quote.Data.OperationId,
-                            Price = quote.Data.Price
+                            Price = quote.Data.Price,
                         });
                         
                         if(quoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
@@ -299,6 +299,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                     intention.ExecuteQuoteId = quoteResponse.Data.OperationId;
                     intention.ExecuteTimestamp = DateTime.UtcNow;
                     intention.Status = BuyStatus.ConversionExecuted;
+                    intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
                 }
             }
             catch (Exception ex)

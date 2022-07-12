@@ -118,7 +118,7 @@ namespace Service.BuyCryptoProcessor.Services
                     intention.SwapFeeAsset = providedCryptoAsset;
                 }
 
-                intention.Rate = intention.PaymentAmount / intention.BuyAmount;
+                intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
                 intention.FeeAsset = intention.BuyFeeAsset;
                 intention.FeeAmount = intention.BuyFeeAmount + intention.SwapFeeAmount * intention.Rate;
 
