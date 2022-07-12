@@ -299,6 +299,11 @@ namespace Service.BuyCryptoProcessor.Jobs
                     intention.ExecuteQuoteId = quoteResponse.Data.OperationId;
                     intention.ExecuteTimestamp = DateTime.UtcNow;
                     intention.Status = BuyStatus.ConversionExecuted;
+                    intention.QuotePrice = quoteResponse.Data.Price;
+                    
+                    var swapFeeInBuyAsset = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
+                    intention.FeeAmount = intention.BuyFeeAmount + swapFeeInBuyAsset;
+                    
                     intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
                 }
             }

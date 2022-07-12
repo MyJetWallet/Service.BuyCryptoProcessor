@@ -116,11 +116,13 @@ namespace Service.BuyCryptoProcessor.Services
                     intention.BuyAmount = providedCryptoAmount;
                     intention.SwapFeeAmount = 0m;
                     intention.SwapFeeAsset = providedCryptoAsset;
+                    intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
                 }
 
+                var swapFeeInBuyAsset = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
                 intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
                 intention.FeeAsset = intention.BuyFeeAsset;
-                intention.FeeAmount = intention.BuyFeeAmount + intention.SwapFeeAmount * intention.Rate;
+                intention.FeeAmount = intention.BuyFeeAmount + swapFeeInBuyAsset;
 
                 await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
                 await context.UpsertAsync(new[] {intention});
