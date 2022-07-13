@@ -153,8 +153,10 @@ namespace Service.BuyCryptoProcessor.Services
                         BuyAsset = intention.BuyAsset,
                         DepositFeeAmount = intention.BuyFeeAmount,
                         DepositFeeAsset = intention.BuyFeeAsset,
-                        TradeFeeAmount = intention.SwapFeeAmountConverted,
-                        TradeFeeAsset = intention.SwapFeeAssetConverted,
+                        TradeFeeAmount = intention.SwapFeeAmount,
+                        TradeFeeAsset = intention.SwapFeeAsset,
+                        //TradeFeeAmount = intention.SwapFeeAmountConverted,
+                        //TradeFeeAsset = intention.SwapFeeAssetConverted,
                         Rate = intention.Rate,
                         PaymentId = intention.Id
                     }
@@ -262,8 +264,10 @@ namespace Service.BuyCryptoProcessor.Services
                     PaymentAmount = intention.PaymentAmount,
                     DepositFeeAmount = intention.BuyFeeAmount,
                     DepositFeeAsset = intention.BuyFeeAsset,
-                    TradeFeeAmount = intention.SwapFeeAmountConverted,
-                    TradeFeeAsset = intention.SwapFeeAssetConverted,
+                    TradeFeeAmount = intention.SwapFeeAmount,
+                    TradeFeeAsset = intention.SwapFeeAsset,
+                    //TradeFeeAmount = intention.SwapFeeAmountConverted,
+                    //TradeFeeAsset = intention.SwapFeeAssetConverted,
                 }
             };
 

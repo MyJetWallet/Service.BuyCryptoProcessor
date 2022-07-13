@@ -86,6 +86,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                             await PublishSuccess(intention);
                             updatedIntentions.Add(intention);
                             count++;
+                            continue;
                         }
 
                         if (response.Data.Status is PaymentStatus.Failed)
@@ -95,6 +96,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                             await PublishSuccess(intention);
                             updatedIntentions.Add(intention);
                             count++;
+                            continue;
                         }
                     }
                     catch (Exception ex)
@@ -127,7 +129,7 @@ namespace Service.BuyCryptoProcessor.Jobs
             if (deposit.BeneficiaryClientId != Program.Settings.ServiceClientId)
                 return;
             
-            if (deposit.Status != DepositStatus.Processed)
+            if (deposit.Status != DepositStatus.Processed && deposit.Status != DepositStatus.Error)
                 return;
             
             var intentionId = deposit.CryptoBuyData?.CryptoBuyId;
@@ -141,9 +143,16 @@ namespace Service.BuyCryptoProcessor.Jobs
             
             try
             {
-                intention.Status = BuyStatus.PaymentReceived;
-                intention.ProvidedCryptoAsset = deposit.AssetSymbol;
-                intention.ProvidedCryptoAmount = deposit.Amount;
+                if (deposit.Status == DepositStatus.Error)
+                {
+                    intention.Status = BuyStatus.Failed;
+                }
+                else
+                {
+                    intention.Status = BuyStatus.PaymentReceived;
+                    intention.ProvidedCryptoAsset = deposit.AssetSymbol;
+                    intention.ProvidedCryptoAmount = deposit.Amount;
+                }
                 intention.DepositOperationId = deposit.Id.ToString();
                 intention.DepositTimestamp = deposit.EventDate;
                 intention.DepositIntegration = deposit.Integration;
