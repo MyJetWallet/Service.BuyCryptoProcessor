@@ -312,7 +312,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                     
                     intention.SwapFeeAmountConverted = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);;
                     
-                    intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
+                    intention.Rate = Math.Round(quoteResponse.Data.Price, 2);
                 }
             }
             catch (Exception ex)
