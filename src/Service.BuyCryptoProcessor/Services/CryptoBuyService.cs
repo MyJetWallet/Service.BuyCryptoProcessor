@@ -227,6 +227,7 @@ namespace Service.BuyCryptoProcessor.Services
                 intention.Status = BuyStatus.ExecutionStarted;
             else
             {
+                intention.PaymentCreationErrorCode = response.Status;
                 intention.LastError = response.Status.ToString();
                 intention.Status = BuyStatus.Failed;
             }
