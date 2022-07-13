@@ -116,6 +116,8 @@ namespace Service.BuyCryptoProcessor.Services
 
                     intention.SwapFeeAmountConverted = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
                     intention.SwapFeeAssetConverted = intention.BuyAsset;
+                    
+                    intention.Rate = quote.Data.Price;
                 }
                 else
                 {
@@ -125,10 +127,10 @@ namespace Service.BuyCryptoProcessor.Services
                     
                     intention.SwapFeeAmountConverted = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
                     intention.SwapFeeAssetConverted = intention.BuyAsset;
+
+                    intention.Rate = 1;
                 }
-
-                intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
-
+                
                 intention.BuyAssetIndexPrice =
                     _indexPricesClient.GetIndexPriceByAssetAsync(intention.BuyAsset).UsdPrice;
                 intention.PaymentAssetIndexPrice =
