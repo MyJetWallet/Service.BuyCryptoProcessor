@@ -22,9 +22,11 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
         [DataMember(Order = 4)] public string PaymentAsset { get; set; }
         [DataMember(Order = 5)]public decimal BuyAmount { get; set; }
         [DataMember(Order = 6)]public string BuyAsset { get; set; }
-        [DataMember(Order = 7)]public decimal FeeAmount { get; set; }
-        [DataMember(Order = 8)]public string FeeAsset { get; set; }
+        [DataMember(Order = 7)]public decimal DepositFeeAmount { get; set; }
+        [DataMember(Order = 8)]public string DepositFeeAsset { get; set; }
         [DataMember(Order = 9)]public decimal Rate { get; set; }
         [DataMember(Order = 10)]public string PaymentId { get; set; }
+        [DataMember(Order = 11)]public decimal TradeFeeAmount { get; set; }
+        [DataMember(Order = 12)]public string TradeFeeAsset { get; set; }
     }
 }

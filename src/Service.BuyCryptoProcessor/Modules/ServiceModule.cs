@@ -8,6 +8,7 @@ using Service.BuyCryptoProcessor.Domain.Models;
 using Service.BuyCryptoProcessor.Jobs;
 using Service.ChangeBalanceGateway.Client;
 using Service.Fees.Client;
+using Service.IndexPrices.Client;
 using Service.Liquidity.Converter.Client;
 
 namespace Service.BuyCryptoProcessor.Modules
@@ -28,7 +29,7 @@ namespace Service.BuyCryptoProcessor.Modules
             builder.RegisterLiquidityConverterClient(Program.Settings.LiquidityConverterGrpcServiceUrl);
             builder.RegisterSpotChangeBalanceGatewayClient(Program.Settings.ChangeBalanceGatewayGrpcServiceUrl);
             builder.RegisterFeesClients(myNoSqlClient);
-
+            builder.RegisterIndexPricesClient(myNoSqlClient);
             builder.RegisterType<PaymentProcessingJob>().AsSelf().SingleInstance().AutoActivate();
         }
     }

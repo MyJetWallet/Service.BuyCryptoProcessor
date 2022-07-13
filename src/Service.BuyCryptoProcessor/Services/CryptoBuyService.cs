@@ -13,6 +13,7 @@ using Service.BuyCryptoProcessor.Grpc.Models;
 using Service.BuyCryptoProcessor.Postgres;
 using Service.Fees.Client;
 using Service.Fees.Domain.Models;
+using Service.IndexPrices.Client;
 using Service.Liquidity.Converter.Domain.Models;
 using Service.Liquidity.Converter.Grpc;
 using Service.Liquidity.Converter.Grpc.Models;
@@ -27,14 +28,16 @@ namespace Service.BuyCryptoProcessor.Services
         private readonly IQuoteService _quoteService;
         private readonly ICircleDepositService _circleService;
         private readonly DbContextOptionsBuilder<DatabaseContext> _dbContextOptionsBuilder;
-
-        public CryptoBuyService(ILogger<CryptoBuyService> logger, IDepositFeesClient depositFees, IQuoteService quoteService, ICircleDepositService circleService, DbContextOptionsBuilder<DatabaseContext> dbContextOptionsBuilder)
+        private readonly IIndexPricesClient _indexPricesClient;
+        
+        public CryptoBuyService(ILogger<CryptoBuyService> logger, IDepositFeesClient depositFees, IQuoteService quoteService, ICircleDepositService circleService, DbContextOptionsBuilder<DatabaseContext> dbContextOptionsBuilder, IIndexPricesClient indexPricesClient)
         {
             _logger = logger;
             _depositFees = depositFees;
             _quoteService = quoteService;
             _circleService = circleService;
             _dbContextOptionsBuilder = dbContextOptionsBuilder;
+            _indexPricesClient = indexPricesClient;
         }
 
         public async Task<CreateCryptoBuyResponse> CreateCryptoBuy(CreateCryptoBuyRequest request)
@@ -110,20 +113,31 @@ namespace Service.BuyCryptoProcessor.Services
                     intention.SwapFeeAsset = quote.Data.FeeAsset;
                     intention.PreviewConvertTimestamp = DateTime.UtcNow;
                     intention.QuotePrice = quote.Data.Price;
+
+                    intention.SwapFeeAmountConverted = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
+                    intention.SwapFeeAssetConverted = intention.BuyAsset;
                 }
                 else
                 {
                     intention.BuyAmount = providedCryptoAmount;
                     intention.SwapFeeAmount = 0m;
                     intention.SwapFeeAsset = providedCryptoAsset;
-                    intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
+                    
+                    intention.SwapFeeAmountConverted = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
+                    intention.SwapFeeAssetConverted = intention.BuyAsset;
                 }
 
-                var swapFeeInBuyAsset = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
                 intention.Rate = intention.ProvidedCryptoAmount / intention.BuyAmount;
-                intention.FeeAsset = intention.BuyFeeAsset;
-                intention.FeeAmount = intention.BuyFeeAmount + swapFeeInBuyAsset;
 
+                intention.BuyAssetIndexPrice =
+                    _indexPricesClient.GetIndexPriceByAssetAsync(intention.BuyAsset).UsdPrice;
+                intention.PaymentAssetIndexPrice =
+                    _indexPricesClient.GetIndexPriceByAssetAsync(intention.PaymentAsset).UsdPrice;
+                intention.BuyFeeAssetIndexPrice =
+                    _indexPricesClient.GetIndexPriceByAssetAsync(intention.BuyFeeAsset).UsdPrice;
+                intention.SwapFeeAssetIndexPrice =
+                    _indexPricesClient.GetIndexPriceByAssetAsync(intention.SwapFeeAsset).UsdPrice;
+                
                 await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
                 await context.UpsertAsync(new[] {intention});
 
@@ -137,8 +151,10 @@ namespace Service.BuyCryptoProcessor.Services
                         PaymentAsset = intention.PaymentAsset,
                         BuyAmount = intention.BuyAmount,
                         BuyAsset = intention.BuyAsset,
-                        FeeAmount = intention.FeeAmount,
-                        FeeAsset = intention.FeeAsset,
+                        DepositFeeAmount = intention.BuyFeeAmount,
+                        DepositFeeAsset = intention.BuyFeeAsset,
+                        TradeFeeAmount = intention.SwapFeeAmountConverted,
+                        TradeFeeAsset = intention.SwapFeeAssetConverted,
                         Rate = intention.Rate,
                         PaymentId = intention.Id
                     }
@@ -244,8 +260,10 @@ namespace Service.BuyCryptoProcessor.Services
                 {
                     PaymentAsset = intention.PaymentAsset,
                     PaymentAmount = intention.PaymentAmount,
-                    FeeAmount = intention.FeeAmount,
-                    FeeAsset = intention.FeeAsset
+                    DepositFeeAmount = intention.BuyFeeAmount,
+                    DepositFeeAsset = intention.BuyFeeAsset,
+                    TradeFeeAmount = intention.SwapFeeAmountConverted,
+                    TradeFeeAsset = intention.SwapFeeAssetConverted,
                 }
             };
 

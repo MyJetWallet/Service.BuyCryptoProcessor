@@ -30,8 +30,10 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
     {
         [DataMember(Order = 1)] public string PaymentAsset { get; set; }
         [DataMember(Order = 2)]public decimal PaymentAmount { get; set; }
-        [DataMember(Order = 3)]public decimal FeeAmount { get; set; }
-        [DataMember(Order = 4)]public string FeeAsset { get; set; }
+        [DataMember(Order = 3)]public decimal DepositFeeAmount { get; set; }
+        [DataMember(Order = 4)]public string DepositFeeAsset { get; set; }
+        [DataMember(Order = 5)]public decimal TradeFeeAmount { get; set; }
+        [DataMember(Order = 6)]public string TradeFeeAsset { get; set; }
     }
     
     [DataContract]

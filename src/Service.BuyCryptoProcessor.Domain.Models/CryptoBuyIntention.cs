@@ -62,7 +62,13 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 41)]public string CircleRequestId { get; set; }
         [DataMember(Order = 42)]public PaymentErrorCode? PaymentExecutionErrorCode { get; set; }
         [DataMember(Order = 43)]public AddCardDepositResponse.StatusCode? PaymentCreationErrorCode { get; set; }
-        
+        [DataMember(Order = 44)]public decimal PaymentAssetIndexPrice { get; set; }
+        [DataMember(Order = 45)]public decimal BuyAssetIndexPrice { get; set; }
+        [DataMember(Order = 46)]public decimal SwapFeeAssetIndexPrice { get; set; }
+        [DataMember(Order = 47)]public decimal BuyFeeAssetIndexPrice { get; set; }
+        [DataMember(Order = 48)]public decimal SwapFeeAmountConverted { get; set; }
+        [DataMember(Order = 49)]public string SwapFeeAssetConverted { get; set; }
+
     }
     
     
