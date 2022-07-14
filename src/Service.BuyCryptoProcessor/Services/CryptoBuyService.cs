@@ -113,6 +113,8 @@ namespace Service.BuyCryptoProcessor.Services
                     intention.SwapFeeAsset = quote.Data.FeeAsset;
                     intention.PreviewConvertTimestamp = DateTime.UtcNow;
                     intention.QuotePrice = quote.Data.Price;
+                    
+                    Console.WriteLine(quote.Data.ToJson());
 
                     intention.SwapFeeAmountConverted = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
                     intention.SwapFeeAssetConverted = intention.BuyAsset;

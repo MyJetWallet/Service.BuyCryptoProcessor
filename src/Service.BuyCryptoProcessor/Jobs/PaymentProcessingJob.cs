@@ -194,7 +194,8 @@ namespace Service.BuyCryptoProcessor.Jobs
                             count++;
                             continue;
                         }
-                        var quoteResponse = await _quoteService.ExecuteQuoteAsync(new ExecuteQuoteRequest
+
+                        var request = new ExecuteQuoteRequest
                         {
                             FromAsset = intention.ProvidedCryptoAsset,
                             ToAsset = intention.BuyAsset,
@@ -205,44 +206,50 @@ namespace Service.BuyCryptoProcessor.Jobs
                             AccountId = Program.Settings.ServiceClientId,
                             WalletId = Program.Settings.ServiceWalletId,
                             OperationId = intention.PreviewQuoteId,
-                            Price = intention.QuotePrice
-                        });
+                            Price = intention.QuotePrice,
+                        };
+                        
+                        Console.WriteLine(request.ToJson());
+                        var quoteResponse = await _quoteService.ExecuteQuoteAsync(request);
                        
-                        if(quoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
+                        switch (quoteResponse.QuoteExecutionResult)
                         {
-                            UpdateIntentionAfterSwap(intention, quoteResponse);
-                            await PublishSuccess(intention);
-                            updatedIntentions.Add(intention); 
-                            count++;
-                            continue;
-                        }
-
-                        if (quoteResponse.QuoteExecutionResult == QuoteExecutionResult.ReQuote)
-                        {
-                            var reQuoteResponse = await _quoteService.ExecuteQuoteAsync(new ExecuteQuoteRequest
-                            {
-                                FromAsset = intention.ProvidedCryptoAsset,
-                                ToAsset = intention.BuyAsset,
-                                FromAssetVolume = intention.ProvidedCryptoAmount,
-                                ToAssetVolume = quoteResponse.Data.FromAssetVolume,
-                                IsFromFixed = true,
-                                BrokerId = intention.BrokerId,
-                                AccountId = Program.Settings.ServiceClientId,
-                                WalletId = Program.Settings.ServiceWalletId,
-                                OperationId = quoteResponse.Data.OperationId,
-                                Price = quoteResponse.Data.Price
-                            });
-
-                            if (reQuoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
-                            {
+                            case QuoteExecutionResult.Success:
                                 UpdateIntentionAfterSwap(intention, quoteResponse);
                                 await PublishSuccess(intention);
                                 updatedIntentions.Add(intention); 
                                 count++;
                                 continue;
-                            }
+                            // case QuoteExecutionResult.ReQuote:
+                            // {
+                            //     var reQuoteResponse = await _quoteService.ExecuteQuoteAsync(new ExecuteQuoteRequest
+                            //     {
+                            //         FromAsset = intention.ProvidedCryptoAsset,
+                            //         ToAsset = intention.BuyAsset,
+                            //         FromAssetVolume = intention.ProvidedCryptoAmount,
+                            //         ToAssetVolume = quoteResponse.Data.FromAssetVolume,
+                            //         IsFromFixed = true,
+                            //         BrokerId = intention.BrokerId,
+                            //         AccountId = Program.Settings.ServiceClientId,
+                            //         WalletId = Program.Settings.ServiceWalletId,
+                            //         OperationId = quoteResponse.Data.OperationId,
+                            //         Price = quoteResponse.Data.Price
+                            //     });
+                            //
+                            //     if (reQuoteResponse.QuoteExecutionResult == QuoteExecutionResult.Success)
+                            //     {
+                            //         UpdateIntentionAfterSwap(intention, quoteResponse);
+                            //         await PublishSuccess(intention);
+                            //         updatedIntentions.Add(intention); 
+                            //         count++;
+                            //         continue;
+                            //     }
+                            //     break;
+                            // }
                         }
-                        
+
+                        Console.WriteLine(quoteResponse.ErrorMessage);
+
                         var quote = await _quoteService.GetQuoteAsync(new GetQuoteRequest
                         {
                             FromAsset = intention.ProvidedCryptoAsset,
