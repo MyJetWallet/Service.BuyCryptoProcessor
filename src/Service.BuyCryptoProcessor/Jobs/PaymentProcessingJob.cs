@@ -146,6 +146,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                 if (deposit.Status == DepositStatus.Error)
                 {
                     intention.Status = BuyStatus.Failed;
+                    intention.PaymentExecutionErrorCode = ConvertErrorCode(deposit.PaymentProviderErrorCode);
                 }
                 else
                 {
@@ -166,7 +167,7 @@ namespace Service.BuyCryptoProcessor.Jobs
 
             await context.UpsertAsync(new[] {intention});
         }
-
+        
         private async Task ExecuteQuote()
         {
             using var activity = MyTelemetry.StartActivity("Handle payment to execute quote");
@@ -448,5 +449,64 @@ namespace Service.BuyCryptoProcessor.Jobs
         {
             _timer?.Dispose();
         }
+        
+        private static PaymentErrorCode? ConvertErrorCode(PaymentProviderErrorCode depositPaymentProviderErrorCode)
+        {
+            return depositPaymentProviderErrorCode switch
+            {
+                PaymentProviderErrorCode.OK => null,
+                PaymentProviderErrorCode.PaymentFailed => PaymentErrorCode.PaymentFailed,
+                PaymentProviderErrorCode.PaymentFraudDetected => PaymentErrorCode.PaymentFraudDetected,
+                PaymentProviderErrorCode.PaymentDenied => PaymentErrorCode.PaymentDenied,
+                PaymentProviderErrorCode.PaymentNotSupportedByIssuer => PaymentErrorCode.PaymentNotSupportedByIssuer,
+                PaymentProviderErrorCode.PaymentNotFunded => PaymentErrorCode.PaymentNotFunded,
+                PaymentProviderErrorCode.PaymentUnprocessable => PaymentErrorCode.PaymentUnprocessable,
+                PaymentProviderErrorCode.PaymentStoppedByIssuer => PaymentErrorCode.PaymentStoppedByIssuer,
+                PaymentProviderErrorCode.PaymentCanceled => PaymentErrorCode.PaymentCanceled,
+                PaymentProviderErrorCode.PaymentReturned => PaymentErrorCode.PaymentReturned,
+                PaymentProviderErrorCode.PaymentFailedBalanceCheck => PaymentErrorCode.PaymentFailedBalanceCheck,
+                PaymentProviderErrorCode.CardFailed => PaymentErrorCode.CardFailed,
+                PaymentProviderErrorCode.CardInvalid => PaymentErrorCode.CardInvalid,
+                PaymentProviderErrorCode.CardAddressMismatch => PaymentErrorCode.CardAddressMismatch,
+                PaymentProviderErrorCode.CardZipMismatch => PaymentErrorCode.CardZipMismatch,
+                PaymentProviderErrorCode.CardCvvInvalid => PaymentErrorCode.CardCvvInvalid,
+                PaymentProviderErrorCode.CardExpired => PaymentErrorCode.CardExpired,
+                PaymentProviderErrorCode.CardLimitViolated => PaymentErrorCode.CardLimitViolated,
+                PaymentProviderErrorCode.CardNotHonored => PaymentErrorCode.CardNotHonored,
+                PaymentProviderErrorCode.CardCvvRequired => PaymentErrorCode.CardCvvRequired,
+                PaymentProviderErrorCode.CreditCardNotAllowed => PaymentErrorCode.CreditCardNotAllowed,
+                PaymentProviderErrorCode.CardAccountIneligible => PaymentErrorCode.CardAccountIneligible,
+                PaymentProviderErrorCode.CardNetworkUnsupported => PaymentErrorCode.CardNetworkUnsupported,
+                PaymentProviderErrorCode.ChannelInvalid => PaymentErrorCode.ChannelInvalid,
+                PaymentProviderErrorCode.UnauthorizedTransaction => PaymentErrorCode.UnauthorizedTransaction,
+                PaymentProviderErrorCode.BankAccountIneligible => PaymentErrorCode.BankAccountIneligible,
+                PaymentProviderErrorCode.BankTransactionError => PaymentErrorCode.BankTransactionError,
+                PaymentProviderErrorCode.InvalidAccountNumber => PaymentErrorCode.InvalidAccountNumber,
+                PaymentProviderErrorCode.InvalidWireRtn => PaymentErrorCode.InvalidWireRtn,
+                PaymentProviderErrorCode.InvalidAchRtn => PaymentErrorCode.InvalidAchRtn,
+                PaymentProviderErrorCode.RefIdInvalid => PaymentErrorCode.RefIdInvalid,
+                PaymentProviderErrorCode.AccountNameMismatch => PaymentErrorCode.AccountNameMismatch,
+                PaymentProviderErrorCode.AccountNumberMismatch => PaymentErrorCode.AccountNumberMismatch,
+                PaymentProviderErrorCode.AccountIneligible => PaymentErrorCode.AccountIneligible,
+                PaymentProviderErrorCode.WalletAddressMismatch => PaymentErrorCode.WalletAddressMismatch,
+                PaymentProviderErrorCode.CustomerNameMismatch => PaymentErrorCode.CustomerNameMismatch,
+                PaymentProviderErrorCode.InstitutionNameMismatch => PaymentErrorCode.InstitutionNameMismatch,
+                PaymentProviderErrorCode.VerificationFailed => PaymentErrorCode.VerificationFailed,
+                PaymentProviderErrorCode.VerificationFraudDetected => PaymentErrorCode.VerificationFraudDetected,
+                PaymentProviderErrorCode.VerificationDenied => PaymentErrorCode.VerificationDenied,
+                PaymentProviderErrorCode.VerificationNotSupportedByIssuer => PaymentErrorCode.VerificationNotSupportedByIssuer,
+                PaymentProviderErrorCode.VerificationStoppedByIssuer => PaymentErrorCode.VerificationStoppedByIssuer,
+                PaymentProviderErrorCode.ThreeDSecureNotSupported => PaymentErrorCode.ThreeDSecureNotSupported,
+                PaymentProviderErrorCode.ThreeDSecureRequired => PaymentErrorCode.ThreeDSecureRequired,
+                PaymentProviderErrorCode.ThreeDSecureFailure => PaymentErrorCode.ThreeDSecureFailure,
+                PaymentProviderErrorCode.ThreeDSecureActionExpired => PaymentErrorCode.ThreeDSecureActionExpired,
+                PaymentProviderErrorCode.ThreeDSecureInvalidRequest => PaymentErrorCode.ThreeDSecureInvalidRequest,
+                PaymentProviderErrorCode.CardRestricted => PaymentErrorCode.CardRestricted,
+                _ => throw new ArgumentOutOfRangeException(nameof(depositPaymentProviderErrorCode),
+                    depositPaymentProviderErrorCode, null)
+            };
+
+        }
+
     }
 }
