@@ -18,7 +18,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
     <PackageReference Include="MyJetWallet.Circle" Version="1.11.9" />
     <PackageReference Include="MyJetWallet.Circle.Settings" Version="1.5.1" />
-    <PackageReference Include="MyJetWallet.Domain" Version="1.2.2" />
+    <PackageReference Include="MyJetWallet.Domain" Version="1.2.3" />
     <PackageReference Include="MyJetWallet.Sdk.GrpcMetrics" Version="2.0.4" />
     <PackageReference Include="MyJetWallet.Sdk.GrpcSchema" Version="1.0.6" />
     <PackageReference Include="MyJetWallet.Sdk.NoSql" Version="2.2.11" />
@@ -28,7 +28,7 @@
     <PackageReference Include="MyJetWallet.Service.ChangeBalanceGateway.Client" Version="2.4.0" />
     <PackageReference Include="MyJetWallet.Service.Fees.Client" Version="3.3.1" />
     <PackageReference Include="MyJetWallet.Service.IndexPrices.Client" Version="1.7.3" />
-    <PackageReference Include="MyJetWallet.Service.Liquidity.Converter.Client" Version="1.8.8" />
+    <PackageReference Include="MyJetWallet.Service.Liquidity.Converter.Client" Version="1.8.9" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="prometheus-net.AspNetCore" Version="6.0.0" />
     <PackageReference Include="protobuf-net.Grpc.AspNetCore" Version="1.0.152" />
