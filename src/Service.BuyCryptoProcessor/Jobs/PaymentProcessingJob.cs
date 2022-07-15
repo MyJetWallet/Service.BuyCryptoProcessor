@@ -209,7 +209,6 @@ namespace Service.BuyCryptoProcessor.Jobs
                             Price = intention.QuotePrice,
                         };
                         
-                        Console.WriteLine(request.ToJson());
                         var quoteResponse = await _quoteService.ExecuteQuoteAsync(request);
                        
                         switch (quoteResponse.QuoteExecutionResult)
@@ -247,9 +246,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                             //     break;
                             // }
                         }
-
-                        Console.WriteLine(quoteResponse.ErrorMessage);
-
+                        
                         var quote = await _quoteService.GetQuoteAsync(new GetQuoteRequest
                         {
                             FromAsset = intention.ProvidedCryptoAsset,
