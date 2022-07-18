@@ -26,8 +26,7 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
     [DataContract]
     public class UnlimintPaymentDetails
     {
-        [DataMember(Order = 1)] public string MerchantId { get; set; }
-        [DataMember(Order = 2)] public string CardToken { get; set; }
-        [DataMember(Order = 3)] public string IpAddress { get; set; }
+        [DataMember(Order = 1)] public string CardToken { get; set; }
+        [DataMember(Order = 2)] public string IpAddress { get; set; }
     }
 }

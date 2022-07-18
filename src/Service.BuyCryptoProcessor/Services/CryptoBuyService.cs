@@ -220,41 +220,6 @@ namespace Service.BuyCryptoProcessor.Services
             };
         }
 
-        private async Task<UnlimintCardPaymentResponse> RequestUnlimintPayment(CryptoBuyIntention intention, UnlimintPaymentDetails paymentDetails)
-        {
-            var response = await _unlimintDepositService.AddUnlimintPayment(new UnlimintCardPaymentRequest
-            {
-                BrokerId = intention.BrokerId,
-                ClientId = intention.ClientId,
-                WalletId = intention.WalletId,
-                MerchantId = paymentDetails.MerchantId,
-                IpAddress = paymentDetails.IpAddress,
-                Amount = intention.PaymentAmount,
-                Currency = intention.PaymentAsset,
-                CardToken = paymentDetails.CardToken,
-                CryptoBuyId = intention.Id,
-                CryptoBuyClientId = Program.Settings.ServiceClientId,
-                CryptoBuyWalletId = Program.Settings.ServiceWalletId
-            });
-            
-            intention.UnlimintDepositId = response.DepositId;
-
-            if (response.Status == AddCardDepositResponse.StatusCode.Ok)
-            {
-                intention.Status = BuyStatus.PaymentCreated;
-                intention.DepositCheckoutLink = response.RedirectUrl;
-            }            
-            else
-            {
-                intention.PaymentCreationErrorCode = response.Status;
-                intention.LastError = response.Status.ToString();
-                intention.Status = BuyStatus.Failed;
-            }
-
-            return response;
-            
-        }
-
         public async Task<CryptoBuyStatusResponse> GetCryptoBuyStatus(CryptoBuyStatusRequest request)
         {
             await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
@@ -349,15 +314,15 @@ namespace Service.BuyCryptoProcessor.Services
         private async Task<AddCardDepositResponse> RequestCirclePayment(CryptoBuyIntention intention,
             CirclePaymentDetails paymentDetails)
         {
-            if(string.IsNullOrEmpty(intention.CircleRequestId))
-                intention.CircleRequestId = Guid.NewGuid().ToString("D");
+            if(string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
+                intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
 
             var response = await _circleService.AddCirclePayment(new AddCardDepositRequest
             {
                 BrokerId = intention.BrokerId,
                 ClientId = intention.ClientId,
                 WalletId = intention.WalletId,
-                RequestId = intention.CircleRequestId,
+                RequestId = intention.PaymentProcessorRequestId,
                 KeyId = paymentDetails.KeyId,
                 SessionId = paymentDetails.SessionId,
                 IpAddress = paymentDetails.IpAddress,
@@ -384,6 +349,47 @@ namespace Service.BuyCryptoProcessor.Services
 
             return response;
         }
+        
+        private async Task<UnlimintCardPaymentResponse> RequestUnlimintPayment(CryptoBuyIntention intention, UnlimintPaymentDetails paymentDetails)
+        {
+            
+            if(string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
+                intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
+
+            var response = await _unlimintDepositService.AddUnlimintPayment(new UnlimintCardPaymentRequest
+            {
+                BrokerId = intention.BrokerId,
+                ClientId = intention.ClientId,
+                WalletId = intention.WalletId,
+                MerchantId = intention.PaymentProcessorRequestId,
+                IpAddress = paymentDetails.IpAddress,
+                Amount = intention.PaymentAmount,
+                Currency = intention.PaymentAsset,
+                CardToken = paymentDetails.CardToken,
+                CryptoBuyId = intention.Id,
+                CryptoBuyClientId = Program.Settings.ServiceClientId,
+                CryptoBuyWalletId = Program.Settings.ServiceWalletId
+            });
+            
+            intention.UnlimintDepositId = response.DepositId;
+
+            if (response.Status == AddCardDepositResponse.StatusCode.Ok)
+            {
+                intention.Status = BuyStatus.PaymentCreated;
+                intention.DepositCheckoutLink = response.RedirectUrl;
+            }            
+            else
+            {
+                intention.PaymentCreationErrorCode = response.Status;
+                intention.LastError = response.Status.ToString();
+                intention.Status = BuyStatus.Failed;
+            }
+
+            return response;
+            
+        }
     }
+    
+    
     
 }

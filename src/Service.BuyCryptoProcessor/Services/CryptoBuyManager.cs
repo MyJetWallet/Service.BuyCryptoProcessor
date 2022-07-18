@@ -76,7 +76,7 @@ namespace Service.BuyCryptoProcessor.Services
                                              t.ExecuteQuoteId.Contains(request.SearchText) ||
                                              t.DepositOperationId.Contains(request.SearchText) ||
                                              t.ClientId.Contains(request.SearchText) ||
-                                             t.CircleRequestId.Contains(request.SearchText));
+                                             t.PaymentProcessorRequestId.Contains(request.SearchText));
                 }
                 
                 var intentions = await query
