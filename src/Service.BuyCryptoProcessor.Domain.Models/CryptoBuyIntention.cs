@@ -68,7 +68,7 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 47)]public decimal BuyFeeAssetIndexPrice { get; set; }
         [DataMember(Order = 48)]public decimal SwapFeeAmountConverted { get; set; }
         [DataMember(Order = 49)]public string SwapFeeAssetConverted { get; set; }
-
+        [DataMember(Order = 50)]public long UnlimintDepositId { get; set; }
     }
     
     

@@ -3,5 +3,6 @@
         public enum PaymentMethods
         {
             CircleCard = 0,
+            Unlimint = 1,
         }
     }

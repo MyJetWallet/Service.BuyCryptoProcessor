@@ -29,8 +29,8 @@ namespace Service.BuyCryptoProcessor.Services
         private readonly ICircleDepositService _circleService;
         private readonly DbContextOptionsBuilder<DatabaseContext> _dbContextOptionsBuilder;
         private readonly IIndexPricesClient _indexPricesClient;
-        
-        public CryptoBuyService(ILogger<CryptoBuyService> logger, IDepositFeesClient depositFees, IQuoteService quoteService, ICircleDepositService circleService, DbContextOptionsBuilder<DatabaseContext> dbContextOptionsBuilder, IIndexPricesClient indexPricesClient)
+        private readonly IUnlimintDepositService _unlimintDepositService;
+        public CryptoBuyService(ILogger<CryptoBuyService> logger, IDepositFeesClient depositFees, IQuoteService quoteService, ICircleDepositService circleService, DbContextOptionsBuilder<DatabaseContext> dbContextOptionsBuilder, IIndexPricesClient indexPricesClient, IUnlimintDepositService unlimintDepositService)
         {
             _logger = logger;
             _depositFees = depositFees;
@@ -38,6 +38,7 @@ namespace Service.BuyCryptoProcessor.Services
             _circleService = circleService;
             _dbContextOptionsBuilder = dbContextOptionsBuilder;
             _indexPricesClient = indexPricesClient;
+            _unlimintDepositService = unlimintDepositService;
         }
 
         public async Task<CreateCryptoBuyResponse> CreateCryptoBuy(CreateCryptoBuyRequest request)
@@ -65,18 +66,12 @@ namespace Service.BuyCryptoProcessor.Services
                 };
 
                 var providedCryptoAsset = GetCryptoAsset(request.BuyAsset, request.PaymentMethod);
-                var buyFees =
-                    _depositFees.GetDepositFees(request.BrokerId, request.DepositFeeProfileId, providedCryptoAsset);
 
+                var buyFeeSize = GetBuyFeeAmount(request.BrokerId, request.DepositFeeProfileId, providedCryptoAsset,
+                    request.PaymentMethod, request.PaymentAmount);
+                
                 intention.BuyFeeAsset = intention.PaymentAsset;
-                intention.BuyFeeAmount = buyFees.FeeSizeType switch
-                {
-                    FeeSizeType.Absolute => buyFees.FeeSizeAbsolute,
-                    FeeSizeType.Percentage => intention.PaymentAmount * buyFees.FeeSizeRelative  / 100m,
-                    FeeSizeType.Composite => (intention.PaymentAmount * buyFees.FeeSizeRelative  / 100m) +
-                                             buyFees.FeeSizeAbsolute
-                };
-
+                intention.BuyFeeAmount = buyFeeSize;
                 var providedCryptoAmount = intention.PaymentAmount - intention.BuyFeeAmount;
                 intention.ProvidedCryptoAmount = providedCryptoAmount;
                 intention.ProvidedCryptoAsset = providedCryptoAsset;
@@ -187,10 +182,13 @@ namespace Service.BuyCryptoProcessor.Services
                 };
             }
 
+            var isSuccess = false;
+            var circleCode = AddCardDepositResponse.StatusCode.Ok;
+
             if (intention.Status != BuyStatus.New)
             {
-                var isSuccess = intention.PaymentCreationErrorCode is null or AddCardDepositResponse.StatusCode.Ok
-                                && intention.PaymentExecutionErrorCode is null;
+                isSuccess = intention.PaymentCreationErrorCode is null or AddCardDepositResponse.StatusCode.Ok
+                            && intention.PaymentExecutionErrorCode is null;
                 return new ExecuteCryptoBuyResponse()
                 {
                     IsSuccess = isSuccess,
@@ -200,32 +198,52 @@ namespace Service.BuyCryptoProcessor.Services
                 };
             }
 
-            if(string.IsNullOrEmpty(intention.CircleRequestId))
-                intention.CircleRequestId = Guid.NewGuid().ToString("D");
+            if (request.PaymentMethod == PaymentMethods.CircleCard)
+            {
+                var circleResponse = await RequestCirclePayment(intention, request.CirclePaymentDetails);
+                isSuccess = circleResponse.Status == AddCardDepositResponse.StatusCode.Ok;
+                circleCode = circleResponse.Status;
+            }
 
-            var response = await _circleService.AddCirclePayment(new AddCardDepositRequest
+            if (request.PaymentMethod == PaymentMethods.Unlimint)
+            {
+                var unlimintResponse = await RequestUnlimintPayment(intention, request.UnlimintPaymentDetails);
+            }
+
+            await context.UpsertAsync(new[] {intention});
+
+            return new ExecuteCryptoBuyResponse()
+            {
+                IsSuccess = isSuccess,
+                PaymentCreationErrorCode = circleCode,
+                ErrorCode = CryptoBuyErrorCode.CircleError
+            };
+        }
+
+        private async Task<UnlimintCardPaymentResponse> RequestUnlimintPayment(CryptoBuyIntention intention, UnlimintPaymentDetails paymentDetails)
+        {
+            var response = await _unlimintDepositService.AddUnlimintPayment(new UnlimintCardPaymentRequest
             {
                 BrokerId = intention.BrokerId,
                 ClientId = intention.ClientId,
                 WalletId = intention.WalletId,
-                RequestId = intention.CircleRequestId,
-                KeyId = request.CirclePaymentDetails.KeyId,
-                SessionId = request.CirclePaymentDetails.SessionId,
-                IpAddress = request.CirclePaymentDetails.IpAddress,
+                MerchantId = paymentDetails.MerchantId,
+                IpAddress = paymentDetails.IpAddress,
                 Amount = intention.PaymentAmount,
-                Currency = intention.ProvidedCryptoAsset,
-                CardId = request.CirclePaymentDetails.CardId,
-                EncryptedData = request.CirclePaymentDetails.EncryptedData,
+                Currency = intention.PaymentAsset,
+                CardToken = paymentDetails.CardToken,
                 CryptoBuyId = intention.Id,
                 CryptoBuyClientId = Program.Settings.ServiceClientId,
                 CryptoBuyWalletId = Program.Settings.ServiceWalletId
             });
-
-            intention.CircleDepositId = response.DepositId;
-            intention.CardId = request.CirclePaymentDetails.CardId;
+            
+            intention.UnlimintDepositId = response.DepositId;
 
             if (response.Status == AddCardDepositResponse.StatusCode.Ok)
-                intention.Status = BuyStatus.ExecutionStarted;
+            {
+                intention.Status = BuyStatus.PaymentCreated;
+                intention.DepositCheckoutLink = response.RedirectUrl;
+            }            
             else
             {
                 intention.PaymentCreationErrorCode = response.Status;
@@ -233,14 +251,8 @@ namespace Service.BuyCryptoProcessor.Services
                 intention.Status = BuyStatus.Failed;
             }
 
-            await context.UpsertAsync(new[] {intention});
+            return response;
             
-            return new ExecuteCryptoBuyResponse()
-            {
-                IsSuccess = response.Status == AddCardDepositResponse.StatusCode.Ok,
-                PaymentCreationErrorCode = response.Status,
-                ErrorCode = CryptoBuyErrorCode.CircleError
-            };
         }
 
         public async Task<CryptoBuyStatusResponse> GetCryptoBuyStatus(CryptoBuyStatusRequest request)
@@ -273,7 +285,7 @@ namespace Service.BuyCryptoProcessor.Services
                 }
             };
 
-            if (intention.Status is BuyStatus.PaymentCreated && intention.PaymentMethod == PaymentMethods.CircleCard)
+            if (intention.Status is BuyStatus.PaymentCreated)
                 response.ClientAction = new ClientAction()
                 {
                     CheckoutUrl = intention.DepositCheckoutLink,
@@ -302,7 +314,75 @@ namespace Service.BuyCryptoProcessor.Services
         private static string GetCryptoAsset(string paymentAsset, PaymentMethods paymentMethod)
         {
             //TODO: get assets dictionary
-            return "USDC";
+            if(paymentMethod == PaymentMethods.CircleCard)
+                return "USDC";
+            if (paymentMethod == PaymentMethods.Unlimint)
+            {
+                if (paymentAsset == "USD")
+                    return "USD";
+                if (paymentAsset == "EUR")
+                    return "EUR";
+            }
+
+            throw new Exception("Unsupported asset");
+        }
+
+        private decimal GetBuyFeeAmount(string brokerId, string feeProfile, string providedCryptoAsset, PaymentMethods method, decimal paymentAmount)
+        {
+            if (method == PaymentMethods.Unlimint)
+                return paymentAmount * 0.3m / 100m;
+            
+            var buyFees =
+                _depositFees.GetDepositFees(brokerId, feeProfile, providedCryptoAsset);
+
+            var buyFeeSize = buyFees.FeeSizeType switch
+            {
+                FeeSizeType.Absolute => buyFees.FeeSizeAbsolute,
+                FeeSizeType.Percentage => paymentAmount * buyFees.FeeSizeRelative / 100m,
+                FeeSizeType.Composite => (paymentAmount * buyFees.FeeSizeRelative / 100m) +
+                                         buyFees.FeeSizeAbsolute
+            };
+
+            return buyFeeSize;
+        }
+
+        private async Task<AddCardDepositResponse> RequestCirclePayment(CryptoBuyIntention intention,
+            CirclePaymentDetails paymentDetails)
+        {
+            if(string.IsNullOrEmpty(intention.CircleRequestId))
+                intention.CircleRequestId = Guid.NewGuid().ToString("D");
+
+            var response = await _circleService.AddCirclePayment(new AddCardDepositRequest
+            {
+                BrokerId = intention.BrokerId,
+                ClientId = intention.ClientId,
+                WalletId = intention.WalletId,
+                RequestId = intention.CircleRequestId,
+                KeyId = paymentDetails.KeyId,
+                SessionId = paymentDetails.SessionId,
+                IpAddress = paymentDetails.IpAddress,
+                Amount = intention.PaymentAmount,
+                Currency = intention.ProvidedCryptoAsset,
+                CardId = paymentDetails.CardId,
+                EncryptedData = paymentDetails.EncryptedData,
+                CryptoBuyId = intention.Id,
+                CryptoBuyClientId = Program.Settings.ServiceClientId,
+                CryptoBuyWalletId = Program.Settings.ServiceWalletId
+            });
+
+            intention.CircleDepositId = response.DepositId;
+            intention.CardId = paymentDetails.CardId;
+
+            if (response.Status == AddCardDepositResponse.StatusCode.Ok)
+                intention.Status = BuyStatus.ExecutionStarted;
+            else
+            {
+                intention.PaymentCreationErrorCode = response.Status;
+                intention.LastError = response.Status.ToString();
+                intention.Status = BuyStatus.Failed;
+            }
+
+            return response;
         }
     }
     
