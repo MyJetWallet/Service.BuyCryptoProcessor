@@ -26,6 +26,7 @@ namespace Service.BuyCryptoProcessor.Modules
             builder.RegisterMyServiceBusPublisher<CryptoBuyIntention>(serviceBusClient, CryptoBuyIntention.TopicName, true);
             
             builder.RegisterCircleDepositServiceClient(Program.Settings.BitgoDepositDetectorGrpcServiceUrl);
+            builder.RegisterUnlimintDepositServiceClient(Program.Settings.BitgoDepositDetectorGrpcServiceUrl);
             builder.RegisterLiquidityConverterClient(Program.Settings.LiquidityConverterGrpcServiceUrl);
             builder.RegisterSpotChangeBalanceGatewayClient(Program.Settings.ChangeBalanceGatewayGrpcServiceUrl);
             builder.RegisterFeesClients(myNoSqlClient);

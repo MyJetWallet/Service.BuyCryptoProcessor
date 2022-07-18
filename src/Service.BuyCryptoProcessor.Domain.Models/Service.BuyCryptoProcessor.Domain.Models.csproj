@@ -7,7 +7,7 @@
 
   <ItemGroup>
     <PackageReference Include="MyJetWallet.Circle" Version="1.11.9" />
-    <PackageReference Include="MyJetWallet.Service.Bitgo.DepositDetector.Client" Version="2.3.10" />
+    <PackageReference Include="MyJetWallet.Service.Bitgo.DepositDetector.Client" Version="2.3.11" />
   </ItemGroup>
 
 </Project>
