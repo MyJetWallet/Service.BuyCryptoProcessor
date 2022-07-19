@@ -208,6 +208,8 @@ namespace Service.BuyCryptoProcessor.Services
             if (request.PaymentMethod == PaymentMethods.Unlimint)
             {
                 var unlimintResponse = await RequestUnlimintPayment(intention, request.UnlimintPaymentDetails);
+                isSuccess = unlimintResponse.Status == AddCardDepositResponse.StatusCode.Ok;
+                circleCode = unlimintResponse.Status;
             }
 
             await context.UpsertAsync(new[] {intention});
