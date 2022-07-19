@@ -65,7 +65,7 @@ namespace Service.BuyCryptoProcessor.Services
                     BuyAsset = request.BuyAsset
                 };
 
-                var providedCryptoAsset = GetCryptoAsset(request.BuyAsset, request.PaymentMethod);
+                var providedCryptoAsset = GetCryptoAsset(request.PaymentAsset, request.PaymentMethod);
 
                 var buyFeeSize = GetBuyFeeAmount(request.BrokerId, request.DepositFeeProfileId, providedCryptoAsset,
                     request.PaymentMethod, request.PaymentAmount);
