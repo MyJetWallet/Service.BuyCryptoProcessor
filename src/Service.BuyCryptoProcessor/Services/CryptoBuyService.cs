@@ -296,11 +296,14 @@ namespace Service.BuyCryptoProcessor.Services
 
         private decimal GetBuyFeeAmount(string brokerId, string feeProfile, string providedCryptoAsset, PaymentMethods method, decimal paymentAmount)
         {
-            if (method == PaymentMethods.Unlimint)
-                return paymentAmount * 0.3m / 100m;
-            
+            var network = method switch
+            {
+                PaymentMethods.CircleCard => "circle-card",
+                PaymentMethods.Unlimint => "unlimint-card",
+                _ => throw new ArgumentOutOfRangeException(nameof(method), method, null)
+            };
             var buyFees =
-                _depositFees.GetDepositFees(brokerId, feeProfile, providedCryptoAsset);
+                _depositFees.GetDepositFees(brokerId, feeProfile, providedCryptoAsset, network);
 
             var buyFeeSize = buyFees.FeeSizeType switch
             {
@@ -388,7 +391,6 @@ namespace Service.BuyCryptoProcessor.Services
             }
 
             return response;
-            
         }
     }
     
