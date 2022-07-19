@@ -364,10 +364,10 @@ namespace Service.BuyCryptoProcessor.Services
                 ClientId = intention.ClientId,
                 WalletId = intention.WalletId,
                 MerchantId = intention.PaymentProcessorRequestId,
-                IpAddress = paymentDetails.IpAddress,
+                IpAddress = paymentDetails?.IpAddress ?? String.Empty,
                 Amount = intention.PaymentAmount,
                 Currency = intention.PaymentAsset,
-                CardToken = paymentDetails.CardToken,
+                CardToken = paymentDetails?.CardToken ?? String.Empty,
                 CryptoBuyId = intention.Id,
                 CryptoBuyClientId = Program.Settings.ServiceClientId,
                 CryptoBuyWalletId = Program.Settings.ServiceWalletId
