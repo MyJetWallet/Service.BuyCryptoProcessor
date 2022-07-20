@@ -48,8 +48,15 @@ namespace Service.BuyCryptoProcessor.Settings
         [YamlProperty("BuyCryptoProcessor.CircleFailureUrl")]
         public string CircleFailureUrl { get; set; }
 
+        [YamlProperty("BuyCryptoProcessor.Cancel3dUrl")]
+        public string Cancel3dUrl { get; set; }
 
-        
+        [YamlProperty("BuyCryptoProcessor.InProcess3dUrl")]
+        public string InProcess3dUrl { get; set; }
+
+        [YamlProperty("BuyCryptoProcessor.Return3dUrl")]
+        public string Return3dUrl { get; set; }
+
 
     }
 }

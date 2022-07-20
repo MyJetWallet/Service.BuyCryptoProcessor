@@ -257,7 +257,12 @@ namespace Service.BuyCryptoProcessor.Services
                 {
                     CheckoutUrl = intention.DepositCheckoutLink,
                     RedirectUrls = new List<string>()
-                        {Program.Settings.CircleSuccessUrl, Program.Settings.CircleFailureUrl}
+                        {
+                        Program.Settings.CircleSuccessUrl, 
+                        Program.Settings.CircleFailureUrl,
+                        Program.Settings.Cancel3dUrl,
+                        Program.Settings.InProcess3dUrl,
+                        Program.Settings.Return3dUrl,}
                 };
 
             if (intention.Status is BuyStatus.ConversionExecuted or BuyStatus.Finished)
