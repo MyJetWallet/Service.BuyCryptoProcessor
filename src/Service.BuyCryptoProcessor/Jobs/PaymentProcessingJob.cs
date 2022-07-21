@@ -129,7 +129,7 @@ namespace Service.BuyCryptoProcessor.Jobs
             if (deposit.BeneficiaryClientId != Program.Settings.ServiceClientId)
                 return;
             
-            if (deposit.Status != DepositStatus.Processed && deposit.Status != DepositStatus.Error)
+            if (deposit.Status != DepositStatus.Processed && deposit.Status != DepositStatus.Error && deposit.Status != DepositStatus.Cancelled)
                 return;
             
             var intentionId = deposit.CryptoBuyData?.CryptoBuyId;
@@ -143,17 +143,24 @@ namespace Service.BuyCryptoProcessor.Jobs
             
             try
             {
-                if (deposit.Status == DepositStatus.Error)
+                switch (deposit.Status)
                 {
-                    intention.Status = BuyStatus.Failed;
-                    intention.PaymentExecutionErrorCode = ConvertErrorCode(deposit.PaymentProviderErrorCode);
+                    case DepositStatus.Cancelled:
+                        intention.Status = BuyStatus.Failed;
+                        intention.LastError = deposit.LastError;
+                        break;
+                    case DepositStatus.Error:
+                        intention.Status = BuyStatus.Failed;
+                        intention.LastError = deposit.LastError;
+                        intention.PaymentExecutionErrorCode = ConvertErrorCode(deposit.PaymentProviderErrorCode);
+                        break;
+                    case DepositStatus.Processed:
+                        intention.Status = BuyStatus.PaymentReceived;
+                        intention.ProvidedCryptoAsset = deposit.AssetSymbol;
+                        intention.ProvidedCryptoAmount = deposit.Amount;
+                        break;
                 }
-                else
-                {
-                    intention.Status = BuyStatus.PaymentReceived;
-                    intention.ProvidedCryptoAsset = deposit.AssetSymbol;
-                    intention.ProvidedCryptoAmount = deposit.Amount;
-                }
+
                 intention.DepositOperationId = deposit.Id.ToString();
                 intention.DepositTimestamp = deposit.EventDate;
                 intention.DepositIntegration = deposit.Integration;
