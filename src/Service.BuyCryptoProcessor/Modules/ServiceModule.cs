@@ -1,6 +1,7 @@
 ﻿using Autofac;
 using MyJetWallet.Sdk.NoSql;
 using MyJetWallet.Sdk.ServiceBus;
+using MyJetWallet.Unlimint.Settings.Ioc;
 using MyServiceBus.Abstractions;
 using Service.Bitgo.DepositDetector.Client;
 using Service.Bitgo.DepositDetector.Domain.Models;
@@ -32,6 +33,7 @@ namespace Service.BuyCryptoProcessor.Modules
             builder.RegisterFeesClients(myNoSqlClient);
             builder.RegisterIndexPricesClient(myNoSqlClient);
             builder.RegisterType<PaymentProcessingJob>().AsSelf().SingleInstance().AutoActivate();
+            builder.RegisterUnlimintSettingsReader(myNoSqlClient);
         }
     }
 }

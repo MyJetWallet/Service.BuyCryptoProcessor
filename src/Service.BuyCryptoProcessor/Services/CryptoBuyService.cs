@@ -4,6 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using MyJetWallet.Sdk.Service;
+using MyJetWallet.Unlimint.Settings.Services;
 using Service.Bitgo.DepositDetector.Domain.Models;
 using Service.Bitgo.DepositDetector.Grpc;
 using Service.BuyCryptoProcessor.Domain.Models;
@@ -21,7 +22,7 @@ using CryptoBuyData = Service.BuyCryptoProcessor.Grpc.Models.CryptoBuyData;
 
 namespace Service.BuyCryptoProcessor.Services
 {
-    public class CryptoBuyService: ICryptoBuyService
+    public class CryptoBuyService : ICryptoBuyService
     {
         private readonly ILogger<CryptoBuyService> _logger;
         private readonly IDepositFeesClient _depositFees;
@@ -30,7 +31,10 @@ namespace Service.BuyCryptoProcessor.Services
         private readonly DbContextOptionsBuilder<DatabaseContext> _dbContextOptionsBuilder;
         private readonly IIndexPricesClient _indexPricesClient;
         private readonly IUnlimintDepositService _unlimintDepositService;
-        public CryptoBuyService(ILogger<CryptoBuyService> logger, IDepositFeesClient depositFees, IQuoteService quoteService, ICircleDepositService circleService, DbContextOptionsBuilder<DatabaseContext> dbContextOptionsBuilder, IIndexPricesClient indexPricesClient, IUnlimintDepositService unlimintDepositService)
+        private readonly IUnlimintAssetMapper _unlimintAssetMapper;
+
+        public CryptoBuyService(ILogger<CryptoBuyService> logger, IDepositFeesClient depositFees, IQuoteService quoteService, ICircleDepositService circleService, DbContextOptionsBuilder<DatabaseContext> dbContextOptionsBuilder, IIndexPricesClient indexPricesClient, IUnlimintDepositService unlimintDepositService,
+            IUnlimintAssetMapper unlimintAssetMapper)
         {
             _logger = logger;
             _depositFees = depositFees;
@@ -39,6 +43,7 @@ namespace Service.BuyCryptoProcessor.Services
             _dbContextOptionsBuilder = dbContextOptionsBuilder;
             _indexPricesClient = indexPricesClient;
             _unlimintDepositService = unlimintDepositService;
+            _unlimintAssetMapper = unlimintAssetMapper;
         }
 
         public async Task<CreateCryptoBuyResponse> CreateCryptoBuy(CreateCryptoBuyRequest request)
@@ -67,10 +72,14 @@ namespace Service.BuyCryptoProcessor.Services
 
                 var providedCryptoAsset = GetCryptoAsset(request.PaymentAsset, request.PaymentMethod);
 
-                var buyFeeSize = GetBuyFeeAmount(request.BrokerId, request.DepositFeeProfileId, providedCryptoAsset,
-                    request.PaymentMethod, request.PaymentAmount);
-                
-                intention.BuyFeeAsset = intention.PaymentAsset;
+                var buyFeeSize = GetBuyFeeAmount(
+                    request.BrokerId, 
+                    request.DepositFeeProfileId, 
+                    providedCryptoAsset,
+                    request.PaymentMethod, 
+                    request.PaymentAmount);
+
+                intention.BuyFeeAsset = providedCryptoAsset;
                 intention.BuyFeeAmount = buyFeeSize;
                 var providedCryptoAmount = intention.PaymentAmount - intention.BuyFeeAmount;
                 intention.ProvidedCryptoAmount = providedCryptoAmount;
@@ -108,23 +117,23 @@ namespace Service.BuyCryptoProcessor.Services
                     intention.SwapFeeAsset = quote.Data.FeeAsset;
                     intention.PreviewConvertTimestamp = DateTime.UtcNow;
                     intention.QuotePrice = quote.Data.Price;
-                    
+
                     intention.SwapFeeAmountConverted = Math.Round(intention.SwapFeeAmount / intention.QuotePrice, 2);
                     intention.SwapFeeAssetConverted = intention.BuyAsset;
-                    intention.Rate = Math.Round(1/quote.Data.Price, 2);
+                    intention.Rate = Math.Round(1 / quote.Data.Price, 2);
                 }
                 else
                 {
                     intention.BuyAmount = providedCryptoAmount;
                     intention.SwapFeeAmount = 0m;
                     intention.SwapFeeAsset = providedCryptoAsset;
-                    
+
                     intention.SwapFeeAmountConverted = 0m;
                     intention.SwapFeeAssetConverted = intention.BuyAsset;
 
                     intention.Rate = 1;
                 }
-                
+
                 intention.BuyAssetIndexPrice =
                     _indexPricesClient.GetIndexPriceByAssetAsync(intention.BuyAsset).UsdPrice;
                 intention.PaymentAssetIndexPrice =
@@ -133,9 +142,9 @@ namespace Service.BuyCryptoProcessor.Services
                     _indexPricesClient.GetIndexPriceByAssetAsync(intention.BuyFeeAsset).UsdPrice;
                 intention.SwapFeeAssetIndexPrice =
                     _indexPricesClient.GetIndexPriceByAssetAsync(intention.SwapFeeAsset).UsdPrice;
-                
+
                 await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
-                await context.UpsertAsync(new[] {intention});
+                await context.UpsertAsync(new[] { intention });
 
                 return new CreateCryptoBuyResponse
                 {
@@ -212,7 +221,7 @@ namespace Service.BuyCryptoProcessor.Services
                 circleCode = unlimintResponse.Status;
             }
 
-            await context.UpsertAsync(new[] {intention});
+            await context.UpsertAsync(new[] { intention });
 
             return new ExecuteCryptoBuyResponse()
             {
@@ -258,7 +267,7 @@ namespace Service.BuyCryptoProcessor.Services
                     CheckoutUrl = intention.DepositCheckoutLink,
                     RedirectUrls = new List<string>()
                         {
-                        Program.Settings.CircleSuccessUrl, 
+                        Program.Settings.CircleSuccessUrl,
                         Program.Settings.CircleFailureUrl,
                         Program.Settings.Cancel3dUrl,
                         Program.Settings.InProcess3dUrl,
@@ -283,17 +292,16 @@ namespace Service.BuyCryptoProcessor.Services
         }
 
 
-        private static string GetCryptoAsset(string paymentAsset, PaymentMethods paymentMethod)
+        private string GetCryptoAsset(string paymentAsset, PaymentMethods paymentMethod)
         {
             //TODO: get assets dictionary
-            if(paymentMethod == PaymentMethods.CircleCard)
+            if (paymentMethod == PaymentMethods.CircleCard)
                 return "USDC";
             if (paymentMethod == PaymentMethods.Unlimint)
             {
-                if (paymentAsset == "USD")
-                    return "USD";
-                if (paymentAsset == "EUR")
-                    return "EUR";
+                var asset = _unlimintAssetMapper.GetUnlimintByPaymentAsset("jetwallet", paymentAsset);
+                if (asset != null)
+                    return asset.SettlementAsset;
             }
 
             throw new Exception("Unsupported asset");
@@ -324,7 +332,7 @@ namespace Service.BuyCryptoProcessor.Services
         private async Task<AddCardDepositResponse> RequestCirclePayment(CryptoBuyIntention intention,
             CirclePaymentDetails paymentDetails)
         {
-            if(string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
+            if (string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
                 intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
 
             var response = await _circleService.AddCirclePayment(new AddCardDepositRequest
@@ -359,19 +367,20 @@ namespace Service.BuyCryptoProcessor.Services
 
             return response;
         }
-        
+
         private async Task<UnlimintCardPaymentResponse> RequestUnlimintPayment(CryptoBuyIntention intention, UnlimintPaymentDetails paymentDetails)
         {
-            
-            if(string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
+
+            if (string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
                 intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
 
+            var asset = _unlimintAssetMapper.GetUnlimintBySettlement("jetwallet", intention.PaymentAsset);
             var response = await _unlimintDepositService.AddUnlimintPayment(new UnlimintCardPaymentRequest
             {
                 BrokerId = intention.BrokerId,
                 ClientId = intention.ClientId,
                 WalletId = intention.WalletId,
-                MerchantOrderId = intention.PaymentProcessorRequestId,
+                MerchantId = intention.PaymentProcessorRequestId,
                 IpAddress = paymentDetails?.IpAddress ?? String.Empty,
                 Amount = intention.PaymentAmount,
                 Currency = intention.PaymentAsset,
@@ -380,14 +389,14 @@ namespace Service.BuyCryptoProcessor.Services
                 CryptoBuyClientId = Program.Settings.ServiceClientId,
                 CryptoBuyWalletId = Program.Settings.ServiceWalletId
             });
-            
+
             intention.UnlimintDepositId = response.DepositId;
 
             if (response.Status == AddCardDepositResponse.StatusCode.Ok)
             {
                 intention.Status = BuyStatus.PaymentCreated;
                 intention.DepositCheckoutLink = response.RedirectUrl;
-            }            
+            }
             else
             {
                 intention.PaymentCreationErrorCode = response.Status;
@@ -398,7 +407,7 @@ namespace Service.BuyCryptoProcessor.Services
             return response;
         }
     }
-    
-    
-    
+
+
+
 }
