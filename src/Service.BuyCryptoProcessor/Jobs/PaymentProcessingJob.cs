@@ -91,6 +91,7 @@ namespace Service.BuyCryptoProcessor.Jobs
 
                         if (response.Data.Status is PaymentStatus.Failed)
                         {
+                            _logger.LogError("Circle payment failed. Response: {response}, intention {intentionId} failed", response.ToJson(), intention.Id);
                             intention.Status = BuyStatus.Failed;
                             intention.PaymentExecutionErrorCode = response.Data.ErrorCode;
                             await PublishSuccess(intention);
@@ -150,6 +151,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                         intention.LastError = deposit.LastError;
                         break;
                     case DepositStatus.Error:
+                        _logger.LogWarning("Deposit failed. Deposit: {deposit}, intention {intentionId} failed", deposit.ToJson(), intention.Id);
                         intention.Status = BuyStatus.Failed;
                         intention.LastError = deposit.LastError;
                         intention.PaymentExecutionErrorCode = ConvertErrorCode(deposit.PaymentProviderErrorCode);
@@ -253,7 +255,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                             //     break;
                             // }
                         }
-                        
+                        _logger.LogWarning("Original quote {quoteId} rejected, generating new quote for intention {intentionId}", quoteResponse.Data.OperationId, intention.Id);
                         var quote = await _quoteService.GetQuoteAsync(new GetQuoteRequest
                         {
                             FromAsset = intention.ProvidedCryptoAsset,

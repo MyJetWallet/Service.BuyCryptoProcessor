@@ -171,10 +171,12 @@ namespace Service.BuyCryptoProcessor.Services
 
         public async Task<ExecuteCryptoBuyResponse> ExecuteCryptoBuy(ExecuteCryptoBuyRequest request)
         {
+            _logger.LogInformation("Requested execution of intention {intentionId}", request.PaymentId);
             await using var context = new DatabaseContext(_dbContextOptionsBuilder.Options);
             var intention = await context.Intentions.FirstOrDefaultAsync(t => t.Id == request.PaymentId);
             if (intention == null)
             {
+                _logger.LogWarning("Requested intention does not exists {intentionId}", request.PaymentId);
                 return new ExecuteCryptoBuyResponse()
                 {
                     IsSuccess = false,
@@ -324,78 +326,107 @@ namespace Service.BuyCryptoProcessor.Services
         private async Task<AddCardDepositResponse> RequestCirclePayment(CryptoBuyIntention intention,
             CirclePaymentDetails paymentDetails)
         {
-            if(string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
-                intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
-
-            var response = await _circleService.AddCirclePayment(new AddCardDepositRequest
+            try
             {
-                BrokerId = intention.BrokerId,
-                ClientId = intention.ClientId,
-                WalletId = intention.WalletId,
-                RequestId = intention.PaymentProcessorRequestId,
-                KeyId = paymentDetails.KeyId,
-                SessionId = paymentDetails.SessionId,
-                IpAddress = paymentDetails.IpAddress,
-                Amount = intention.PaymentAmount,
-                Currency = intention.ProvidedCryptoAsset,
-                CardId = paymentDetails.CardId,
-                EncryptedData = paymentDetails.EncryptedData,
-                CryptoBuyId = intention.Id,
-                CryptoBuyClientId = Program.Settings.ServiceClientId,
-                CryptoBuyWalletId = Program.Settings.ServiceWalletId
-            });
+                if (string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
+                    intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
 
-            intention.CircleDepositId = response.DepositId;
-            intention.CardId = paymentDetails.CardId;
+                var response = await _circleService.AddCirclePayment(new AddCardDepositRequest
+                {
+                    BrokerId = intention.BrokerId,
+                    ClientId = intention.ClientId,
+                    WalletId = intention.WalletId,
+                    RequestId = intention.PaymentProcessorRequestId,
+                    KeyId = paymentDetails.KeyId,
+                    SessionId = paymentDetails.SessionId,
+                    IpAddress = paymentDetails.IpAddress,
+                    Amount = intention.PaymentAmount,
+                    Currency = intention.ProvidedCryptoAsset,
+                    CardId = paymentDetails.CardId,
+                    EncryptedData = paymentDetails.EncryptedData,
+                    CryptoBuyId = intention.Id,
+                    CryptoBuyClientId = Program.Settings.ServiceClientId,
+                    CryptoBuyWalletId = Program.Settings.ServiceWalletId
+                });
 
-            if (response.Status == AddCardDepositResponse.StatusCode.Ok)
-                intention.Status = BuyStatus.ExecutionStarted;
-            else
-            {
-                intention.PaymentCreationErrorCode = response.Status;
-                intention.LastError = response.Status.ToString();
-                intention.Status = BuyStatus.Failed;
+                intention.CircleDepositId = response.DepositId;
+                intention.CardId = paymentDetails.CardId;
+
+                if (response.Status == AddCardDepositResponse.StatusCode.Ok)
+                {
+                    intention.Status = BuyStatus.ExecutionStarted;
+                    _logger.LogInformation(
+                        "Receiver successful response for intentionId {intentionId} from circle {response}",
+                        intention.Id, response);
+                }
+                else
+                {
+                    _logger.LogError(
+                        "Receiver unsuccessful response for intentionId {intentionId} from circle {response}",
+                        intention.Id, response);
+                    intention.PaymentCreationErrorCode = response.Status;
+                    intention.LastError = response.Status.ToString();
+                    intention.Status = BuyStatus.Failed;
+                }
+
+                return response;
             }
-
-            return response;
+            catch (Exception e)
+            {
+                _logger.LogError(e, "When requesting circle payment for circle {intentionId}", intention.Id);
+                throw;
+            }
         }
         
         private async Task<UnlimintCardPaymentResponse> RequestUnlimintPayment(CryptoBuyIntention intention, UnlimintPaymentDetails paymentDetails)
         {
-            
-            if(string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
-                intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
+            try
+            {
+                if (string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
+                    intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
 
-            var response = await _unlimintDepositService.AddUnlimintPayment(new UnlimintCardPaymentRequest
-            {
-                BrokerId = intention.BrokerId,
-                ClientId = intention.ClientId,
-                WalletId = intention.WalletId,
-                MerchantId = intention.PaymentProcessorRequestId,
-                IpAddress = paymentDetails?.IpAddress ?? String.Empty,
-                Amount = intention.PaymentAmount,
-                Currency = intention.PaymentAsset,
-                CardToken = paymentDetails?.CardToken ?? String.Empty,
-                CryptoBuyId = intention.Id,
-                CryptoBuyClientId = Program.Settings.ServiceClientId,
-                CryptoBuyWalletId = Program.Settings.ServiceWalletId
-            });
-            
-            intention.UnlimintDepositId = response.DepositId;
+                var response = await _unlimintDepositService.AddUnlimintPayment(new UnlimintCardPaymentRequest
+                {
+                    BrokerId = intention.BrokerId,
+                    ClientId = intention.ClientId,
+                    WalletId = intention.WalletId,
+                    MerchantId = intention.PaymentProcessorRequestId,
+                    IpAddress = paymentDetails?.IpAddress ?? String.Empty,
+                    Amount = intention.PaymentAmount,
+                    Currency = intention.PaymentAsset,
+                    CardToken = paymentDetails?.CardToken ?? String.Empty,
+                    CryptoBuyId = intention.Id,
+                    CryptoBuyClientId = Program.Settings.ServiceClientId,
+                    CryptoBuyWalletId = Program.Settings.ServiceWalletId
+                });
 
-            if (response.Status == AddCardDepositResponse.StatusCode.Ok)
-            {
-                intention.Status = BuyStatus.PaymentCreated;
-                intention.DepositCheckoutLink = response.RedirectUrl;
-            }            
-            else
-            {
-                intention.PaymentCreationErrorCode = response.Status;
-                intention.LastError = response.Status.ToString();
-                intention.Status = BuyStatus.Failed;
+                intention.UnlimintDepositId = response.DepositId;
+
+                if (response.Status == AddCardDepositResponse.StatusCode.Ok)
+                {
+                    _logger.LogInformation(
+                        "Receiver successful response for intentionId {intentionId} from unlimint {response}",
+                        intention.Id, response);
+                    intention.Status = BuyStatus.PaymentCreated;
+                    intention.DepositCheckoutLink = response.RedirectUrl;
+                }
+                else
+                {
+                    _logger.LogError(
+                        "Receiver unsuccessful response for intentionId {intentionId} from unlimint {response}",
+                        intention.Id, response);
+                    intention.PaymentCreationErrorCode = response.Status;
+                    intention.LastError = response.Status.ToString();
+                    intention.Status = BuyStatus.Failed;
+                }
+
+                return response;
             }
-
-            return response;
+            catch (Exception e)
+            {
+                _logger.LogError(e, "When requesting unlimint payment for intention {intentionId}", intention.Id);
+                throw;
+            }
         }
     }
     
