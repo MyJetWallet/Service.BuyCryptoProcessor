@@ -371,7 +371,7 @@ namespace Service.BuyCryptoProcessor.Services
                 BrokerId = intention.BrokerId,
                 ClientId = intention.ClientId,
                 WalletId = intention.WalletId,
-                MerchantId = intention.PaymentProcessorRequestId,
+                MerchantOrderId = intention.PaymentProcessorRequestId,
                 IpAddress = paymentDetails?.IpAddress ?? String.Empty,
                 Amount = intention.PaymentAmount,
                 Currency = intention.PaymentAsset,
