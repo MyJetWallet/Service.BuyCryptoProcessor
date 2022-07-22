@@ -374,7 +374,6 @@ namespace Service.BuyCryptoProcessor.Services
             if (string.IsNullOrEmpty(intention.PaymentProcessorRequestId))
                 intention.PaymentProcessorRequestId = Guid.NewGuid().ToString("D");
 
-            var asset = _unlimintAssetMapper.GetUnlimintBySettlement("jetwallet", intention.PaymentAsset);
             var response = await _unlimintDepositService.AddUnlimintPayment(new UnlimintCardPaymentRequest
             {
                 BrokerId = intention.BrokerId,
