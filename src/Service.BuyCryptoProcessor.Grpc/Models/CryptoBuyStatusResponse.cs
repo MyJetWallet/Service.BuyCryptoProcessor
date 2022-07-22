@@ -14,7 +14,7 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
         [DataMember(Order = 3)] public BuyStatus Status { get; set; }
         [DataMember(Order = 4)]public Payment PaymentInfo { get; set; }
         [DataMember(Order = 5)]public Buy BuyInfo { get; set; }
-        [DataMember(Order = 6)] public PaymentErrorCode? PaymentExecutionErrorCode { get; set; }
+        [DataMember(Order = 6)] public PaymentProviderErrorCode PaymentErrorCode { get; set; }
         [DataMember(Order = 7)] public AddCardDepositResponse.StatusCode? PaymentCreationErrorCode { get; set; }
     }
 

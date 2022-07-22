@@ -16,6 +16,7 @@ using Service.Bitgo.DepositDetector.Domain.Models;
 using Service.Bitgo.DepositDetector.Grpc;
 using Service.BuyCryptoProcessor.Domain.Models;
 using Service.BuyCryptoProcessor.Domain.Models.Enums;
+using Service.BuyCryptoProcessor.Helpers;
 using Service.BuyCryptoProcessor.Postgres;
 using Service.ChangeBalanceGateway.Grpc;
 using Service.Liquidity.Converter.Domain.Models;
@@ -92,7 +93,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                         if (response.Data.Status is PaymentStatus.Failed)
                         {
                             intention.Status = BuyStatus.Failed;
-                            intention.PaymentExecutionErrorCode = response.Data.ErrorCode;
+                            intention.PaymentErrorCode = response.Data.ErrorCode.ToErrorCode();
                             await PublishSuccess(intention);
                             updatedIntentions.Add(intention);
                             count++;
@@ -152,12 +153,14 @@ namespace Service.BuyCryptoProcessor.Jobs
                     case DepositStatus.Error:
                         intention.Status = BuyStatus.Failed;
                         intention.LastError = deposit.LastError;
-                        intention.PaymentExecutionErrorCode = ConvertErrorCode(deposit.PaymentProviderErrorCode);
+                        intention.PaymentErrorCode = deposit.PaymentProviderErrorCode;
                         break;
                     case DepositStatus.Processed:
                         intention.Status = BuyStatus.PaymentReceived;
                         intention.ProvidedCryptoAsset = deposit.AssetSymbol;
                         intention.ProvidedCryptoAmount = deposit.Amount;
+                        intention.BuyFeeAmount = deposit.FeeAmount;
+                        intention.BuyFeeAsset = deposit.FeeAssetSymbol;
                         break;
                 }
 

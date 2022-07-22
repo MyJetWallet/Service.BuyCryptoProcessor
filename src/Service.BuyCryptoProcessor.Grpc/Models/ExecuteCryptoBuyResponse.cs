@@ -11,7 +11,7 @@ namespace Service.BuyCryptoProcessor.Grpc.Models
         [DataMember(Order = 1)] public bool IsSuccess { get; set; }
         //[DataMember(Order = 2)] public AddCardDepositResponse.StatusCode ErrorCardCode { get; set; }
         [DataMember(Order = 3)] public CryptoBuyErrorCode ErrorCode { get; set; }
-        [DataMember(Order = 4)] public PaymentErrorCode? PaymentExecutionErrorCode { get; set; }
+        [DataMember(Order = 4)] public PaymentProviderErrorCode PaymentErrorCode { get; set; }
         [DataMember(Order = 5)] public AddCardDepositResponse.StatusCode? PaymentCreationErrorCode { get; set; }
 
     }

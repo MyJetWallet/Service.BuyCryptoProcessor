@@ -60,7 +60,7 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 39)]public DateTime ExecuteTimestamp { get; set; }
         [DataMember(Order = 40)]public decimal Rate { get; set; }
         [DataMember(Order = 41)]public string PaymentProcessorRequestId { get; set; }
-        [DataMember(Order = 42)]public PaymentErrorCode? PaymentExecutionErrorCode { get; set; }
+        //[DataMember(Order = 42)]public PaymentErrorCode? PaymentExecutionErrorCode { get; set; }
         [DataMember(Order = 43)]public AddCardDepositResponse.StatusCode? PaymentCreationErrorCode { get; set; }
         [DataMember(Order = 44)]public decimal PaymentAssetIndexPrice { get; set; }
         [DataMember(Order = 45)]public decimal BuyAssetIndexPrice { get; set; }
@@ -69,6 +69,7 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 48)]public decimal SwapFeeAmountConverted { get; set; }
         [DataMember(Order = 49)]public string SwapFeeAssetConverted { get; set; }
         [DataMember(Order = 50)]public long UnlimintDepositId { get; set; }
+        [DataMember (Order = 51)] public PaymentProviderErrorCode PaymentErrorCode { get; set; }
     }
     
     

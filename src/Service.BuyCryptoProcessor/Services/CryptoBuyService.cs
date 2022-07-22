@@ -188,12 +188,12 @@ namespace Service.BuyCryptoProcessor.Services
             if (intention.Status != BuyStatus.New)
             {
                 isSuccess = intention.PaymentCreationErrorCode is null or AddCardDepositResponse.StatusCode.Ok
-                            && intention.PaymentExecutionErrorCode is null;
+                            && intention.PaymentErrorCode is PaymentProviderErrorCode.OK;
                 return new ExecuteCryptoBuyResponse()
                 {
                     IsSuccess = isSuccess,
                     PaymentCreationErrorCode = intention.PaymentCreationErrorCode,
-                    PaymentExecutionErrorCode = intention.PaymentExecutionErrorCode,
+                    PaymentErrorCode = intention.PaymentErrorCode,
                     ErrorCode = CryptoBuyErrorCode.CircleError
                 };
             }
@@ -275,7 +275,7 @@ namespace Service.BuyCryptoProcessor.Services
 
             if (intention.Status is BuyStatus.Failed)
             {
-                response.PaymentExecutionErrorCode = intention.PaymentExecutionErrorCode;
+                response.PaymentErrorCode = intention.PaymentErrorCode;
                 response.PaymentCreationErrorCode = intention.PaymentCreationErrorCode;
             }
 
