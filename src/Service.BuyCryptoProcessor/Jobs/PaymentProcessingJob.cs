@@ -235,7 +235,6 @@ namespace Service.BuyCryptoProcessor.Jobs
                             // {
                             //     var reQuoteResponse = await _quoteService.ExecuteQuoteAsync(new ExecuteQuoteRequest
                             //     {
-                            //         FromAsset = intention.ProvidedCryptoAsset,
                             //         ToAsset = intention.BuyAsset,
                             //         FromAssetVolume = intention.ProvidedCryptoAmount,
                             //         ToAssetVolume = quoteResponse.Data.FromAssetVolume,
@@ -258,7 +257,7 @@ namespace Service.BuyCryptoProcessor.Jobs
                             //     break;
                             // }
                         }
-                        _logger.LogWarning("Original quote {quoteId} rejected, generating new quote for intention {intentionId}", quoteResponse.Data.OperationId, intention.Id);
+                        _logger.LogWarning("Original quote {quoteId} rejected, generating new quote for intention {intentionId}", quoteResponse.Data?.OperationId, intention.Id);
                         var quote = await _quoteService.GetQuoteAsync(new GetQuoteRequest
                         {
                             FromAsset = intention.ProvidedCryptoAsset,
