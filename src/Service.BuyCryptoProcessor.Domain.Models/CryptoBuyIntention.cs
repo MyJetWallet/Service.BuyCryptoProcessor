@@ -70,6 +70,7 @@ namespace Service.BuyCryptoProcessor.Domain.Models
         [DataMember(Order = 49)]public string SwapFeeAssetConverted { get; set; }
         [DataMember(Order = 50)]public long UnlimintDepositId { get; set; }
         [DataMember (Order = 51)] public PaymentProviderErrorCode PaymentErrorCode { get; set; }
+        [DataMember(Order = 52)] public string CardType { get; set; }
     }
     
     

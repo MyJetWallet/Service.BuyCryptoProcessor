@@ -163,6 +163,14 @@ namespace Service.BuyCryptoProcessor.Jobs
                         intention.ProvidedCryptoAmount = deposit.Amount;
                         intention.BuyFeeAmount = deposit.FeeAmount;
                         intention.BuyFeeAsset = deposit.FeeAssetSymbol;
+                        intention.CardType = deposit.CardType switch
+                        {
+                            Bitgo.DepositDetector.Domain.Models.Cards.CardType.MasterCard => "MASTERCARD",
+                            Bitgo.DepositDetector.Domain.Models.Cards.CardType.Visa => "VISA",
+                            Bitgo.DepositDetector.Domain.Models.Cards.CardType.UnionPay => "UNION PAY",
+                            Bitgo.DepositDetector.Domain.Models.Cards.CardType.Unknown => "UNKNOWN",
+                            _ => null,
+                        };
                         break;
                 }
 
