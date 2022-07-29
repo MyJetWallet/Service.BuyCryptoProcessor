@@ -67,7 +67,8 @@ namespace Service.BuyCryptoProcessor.Services
                     PaymentAmount = request.PaymentAmount,
                     PaymentAsset = request.PaymentAsset,
                     SwapProfileId = request.SwapFeeProfileId,
-                    BuyAsset = request.BuyAsset
+                    BuyAsset = request.BuyAsset,
+                    CardId = ""
                 };
 
                 var providedCryptoAsset = GetCryptoAsset(request.PaymentAsset, request.PaymentMethod);
