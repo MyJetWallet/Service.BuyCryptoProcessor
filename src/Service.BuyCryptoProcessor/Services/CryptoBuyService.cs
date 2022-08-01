@@ -274,7 +274,10 @@ namespace Service.BuyCryptoProcessor.Services
                         Program.Settings.CircleFailureUrl,
                         Program.Settings.Cancel3dUrl,
                         Program.Settings.InProcess3dUrl,
-                        Program.Settings.Return3dUrl,}
+                        Program.Settings.Return3dUrl,
+                        Program.Settings.UnlimintFailureUrl,
+                        Program.Settings.UnlimintSuccessUrl
+                        }
                 };
 
             if (intention.Status is BuyStatus.ConversionExecuted or BuyStatus.Finished)

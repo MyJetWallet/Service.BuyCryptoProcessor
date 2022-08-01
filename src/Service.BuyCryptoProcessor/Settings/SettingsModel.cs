@@ -56,7 +56,11 @@ namespace Service.BuyCryptoProcessor.Settings
 
         [YamlProperty("BuyCryptoProcessor.Return3dUrl")]
         public string Return3dUrl { get; set; }
-
+        
+        [YamlProperty("BuyCryptoProcessor.UnlimintFailureUrl")]
+        public string UnlimintFailureUrl { get; set; }
+        [YamlProperty("BuyCryptoProcessor.UnlimintSuccessUrl")]
+        public string UnlimintSuccessUrl { get; set; }
 
     }
 }
